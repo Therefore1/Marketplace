@@ -1,0 +1,180 @@
+import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+const Cart = () => {
+  // Ensure we start at the top of the page when navigating to Cart
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  return (
+    <div className="bg-surface text-on-surface">
+      <main className="max-w-screen-2xl mx-auto px-6 py-12 md:py-20 mt-16">
+        {/* Editorial Header */}
+        <div className="mb-12">
+          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-primary mb-4 font-headline">Votre Panier</h1>
+          <p className="text-stone-600 dark:text-stone-400 font-medium tracking-wide flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">info</span>
+            Précision et clarté pour votre inventaire d'exploitation.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* Product List Section */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* Product Card 1 */}
+            <div className="group relative flex flex-col md:flex-row gap-6 p-6 bg-stone-100 dark:bg-stone-900/50 rounded-lg transition-all hover:bg-stone-200/50 dark:hover:bg-stone-800/50">
+              <div className="w-full md:w-48 h-48 rounded-md overflow-hidden bg-stone-200 dark:bg-stone-800">
+                <img alt="Professional grade soil pH meter" className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" data-alt="Close-up of a modern professional soil pH meter with digital display on dark textured background with studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBr1IAOfK9LtzLGPnX_lmLS8VpYxmMwt2qw4-_W9lo22hqXwbNdSSVJ3PsL_Pdqopiez4S3m-_5i922VQwzO4IBo-H8aImWiLxqQXjaPmQs3xjxq4FlnwQSovE4vjbJqBqrn27dmb9grlmj0XjBYYziryzMLah61hWP7n0inG03r9ZIX-7P22HIyQUJvu3zbqCDthIV2zwbnR8kIlSkhMjveN4Jl9hSs8gikwnT46YQouOqN7QQGQ-zC9fYZsT9fmdBj7ToWHrlCeM" />
+              </div>
+              <div className="flex-1 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-stone-900 dark:text-stone-50 mb-1 font-headline">Analyseur de Sol Precision-X1</h3>
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300">
+                      En Stock
+                    </div>
+                  </div>
+                  <button className="p-2 text-stone-400 hover:text-red-500 transition-colors" title="Supprimer produit">
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+                <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Modifier quantité</span>
+                    <div className="flex items-center bg-white dark:bg-stone-900 rounded-md overflow-hidden border border-stone-200 dark:border-stone-800">
+                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                        <span className="material-symbols-outlined text-sm">remove</span>
+                      </button>
+                      <span className="px-6 py-2 font-bold text-stone-900 dark:text-stone-50">1</span>
+                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                        <span className="material-symbols-outlined text-sm">add</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm text-stone-500 block">Prix unitaire</span>
+                    <span className="text-2xl font-black text-primary font-headline">3 490 DH</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Card 2 */}
+            <div className="group relative flex flex-col md:flex-row gap-6 p-6 bg-stone-100 dark:bg-stone-900/50 rounded-lg transition-all hover:bg-stone-200/50 dark:hover:bg-stone-800/50">
+              <div className="w-full md:w-48 h-48 rounded-md overflow-hidden bg-stone-200 dark:bg-stone-800">
+                <img alt="Organic nitrogen fertilizer bag" className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" data-alt="High-end packaging of organic nitrogen fertilizer on a minimalist wooden bench with soft morning sunlight casting shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBncONA6AERv5bej8g-1aiwyIxsWTYdgCWdOSuOlbhb9iQWqov_NUfPwTwlaucrsPJVHJPGBvxQMW82opoaU0DBJDHT0oTOwJpE5YzBtIcC9oDAVE_TmFVVPzwOFo1urfzS4ezchZZEcn13q7SWuxeZ4zptU3kxUyoQbXlPvAHBfDvpvw02BpkyShNmroGgWxFeZu73KXOSzifEMScl9TDRy4DjJfQujqGYVHVhJjAsWQk1MwIarSHQkrRPyLFhNk_zyTk7xDiAbxE" />
+              </div>
+              <div className="flex-1 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-stone-900 dark:text-stone-50 mb-1 font-headline">Fertilisant Azoté Organique (25kg)</h3>
+                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+                      Stock Limité
+                    </div>
+                  </div>
+                  <button className="p-2 text-stone-400 hover:text-red-500 transition-colors" title="Supprimer produit">
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+                <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Modifier quantité</span>
+                    <div className="flex items-center bg-white dark:bg-stone-900 rounded-md overflow-hidden border border-stone-200 dark:border-stone-800">
+                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                        <span className="material-symbols-outlined text-sm">remove</span>
+                      </button>
+                      <span className="px-6 py-2 font-bold text-stone-900 dark:text-stone-50">4</span>
+                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                        <span className="material-symbols-outlined text-sm">add</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm text-stone-500 block">Prix unitaire</span>
+                    <span className="text-2xl font-black text-primary font-headline">895 DH</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-8">
+              <Link className="inline-flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all duration-300" to="/products">
+                <span className="material-symbols-outlined">arrow_back</span>
+                Continuer mes achats
+              </Link>
+            </div>
+          </div>
+
+          {/* Summary Section */}
+          <div className="lg:col-span-4">
+            <div className="bg-stone-100 dark:bg-stone-900/80 p-8 rounded-lg sticky top-32 border border-stone-200/50 dark:border-stone-800/50">
+              <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-50 mb-8 font-headline">Récapitulatif</h2>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center text-stone-600 dark:text-stone-400">
+                  <span className="font-medium">Sous-total</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">7 070 DH</span>
+                </div>
+                <div className="flex justify-between items-center text-stone-600 dark:text-stone-400">
+                  <span className="font-medium">Livraison estimée</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">125 DH</span>
+                </div>
+                <div className="flex justify-between items-center text-stone-600 dark:text-stone-400 pb-6">
+                  <span className="font-medium">Taxes (TVA 20%)</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">1 414 DH</span>
+                </div>
+
+                <div className="pt-6 border-t border-stone-200 dark:border-stone-800">
+                  <div className="flex justify-between items-end mb-8">
+                    <span className="text-sm font-bold uppercase tracking-widest text-stone-500">Total prix</span>
+                    <span className="text-4xl font-black text-primary font-headline">8 609 DH</span>
+                  </div>
+                  <Link to="/checkout" className="w-full h-14 bg-gradient-to-r from-green-800 to-green-700 dark:from-green-700 dark:to-green-600 text-white font-bold rounded-md flex items-center justify-center gap-3 shadow-lg hover:opacity-90 transition-all active:scale-[0.98]">
+                    Commander
+                    <span className="material-symbols-outlined">shopping_cart_checkout</span>
+                  </Link>
+                  <p className="mt-4 text-center text-xs text-stone-400 leading-relaxed font-medium">
+                    Les délais de livraison pour les équipements techniques peuvent varier selon la zone géographique de votre exploitation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Price Ticker / Promo */}
+            <div className="mt-6 bg-stone-800 text-white p-6 rounded-lg flex items-center gap-4 border border-stone-700">
+              <div className="p-3 bg-stone-700 rounded-md">
+                <span className="material-symbols-outlined text-green-400">verified</span>
+              </div>
+              <div>
+                <p className="font-bold leading-tight font-headline">Offre Exclusive Estate</p>
+                <p className="text-sm text-stone-300">Livraison offerte dès 10 000 DH d'achat.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer Shell */}
+      <footer className="bg-stone-100 dark:bg-stone-900 w-full border-t border-stone-200 dark:border-stone-800 mt-20">
+        <div className="max-w-screen-2xl mx-auto px-6 py-12 space-y-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="font-headline font-bold text-stone-900 dark:text-stone-100 text-xl">
+              The Cultivated Ledger
+            </div>
+            <nav className="flex flex-wrap justify-center gap-6 text-sm uppercase tracking-widest font-bold">
+              <a className="text-stone-500 dark:text-stone-400 hover:text-green-700 dark:hover:text-green-300 transition-colors" href="#">Terms of Service</a>
+              <a className="text-stone-500 dark:text-stone-400 hover:text-green-700 dark:hover:text-green-300 transition-colors" href="#">Privacy Policy</a>
+              <a className="text-stone-500 dark:text-stone-400 hover:text-green-700 dark:hover:text-green-300 transition-colors" href="#">Shipping Rates</a>
+              <a className="text-stone-500 dark:text-stone-400 hover:text-green-700 dark:hover:text-green-300 transition-colors" href="#">Support</a>
+            </nav>
+          </div>
+          <div className="text-center md:text-left text-stone-400 dark:text-stone-500 text-xs uppercase tracking-widest pt-8 border-t border-stone-200 dark:border-stone-800 font-bold">
+            © 2024 The Cultivated Ledger. High-End Editorial Utility for the Modern Estate.
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Cart;
