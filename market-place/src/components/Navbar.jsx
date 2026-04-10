@@ -1,11 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import './navbar.css';
 
 const Navbar = () => {
   const location = useLocation();
   const { isLoggedIn, logout } = useAuth();
+  const { cartCount } = useCart();
+
 
   const getLinkClass = (path) => {
     return location.pathname === path
@@ -27,7 +30,14 @@ const Navbar = () => {
         </div>
         <div className="flex items-center gap-2 lg:gap-4 shrink-0">
           <button className="material-symbols-outlined p-2 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-lg text-stone-600 hidden md:block">notifications</button>
-          <Link to="/cart" className="material-symbols-outlined p-2 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-lg text-stone-600 text-center block">shopping_cart</Link>
+          <Link to="/cart" className="relative p-2 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-lg text-stone-600 group transition-all">
+            <span className="material-symbols-outlined block">shopping_cart</span>
+            {cartCount > 0 && (
+              <span className="absolute top-1 right-1 bg-primary text-on-primary text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                {cartCount}
+              </span>
+            )}
+          </Link>
           {isLoggedIn ? (
             <div className="flex items-center gap-3">
               <button onClick={logout} className="p-2 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-lg text-stone-400 material-symbols-outlined" title="Logout">logout</button>

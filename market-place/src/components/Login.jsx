@@ -6,13 +6,33 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    login({ email });
-    navigate('/products');
+    setError('');
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+      
+      login({ id: data.id, name: data.name, email: data.email });
+      navigate('/products');
+    } catch (err) {
+      setError('Erreur de connexion au serveur.');
+      console.error(err);
+    }
   };
 
   return (
@@ -58,6 +78,11 @@ const Login = () => {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-bold border border-red-200">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-[14px] font-semibold text-[#40493d] ml-1">Email ou Numéro de téléphone</label>

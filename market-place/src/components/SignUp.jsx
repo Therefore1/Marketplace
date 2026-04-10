@@ -8,18 +8,38 @@ const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
+    setError('');
+    
     if (password !== confirmPassword) {
-      alert("Les mots de passe ne correspondent pas !");
+      setError("Les mots de passe ne correspondent pas !");
       return;
     }
-    // Immediate login after sign up
-    login({ name: `${firstName} ${lastName}`, email });
-    navigate('/products');
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `${firstName} ${lastName}`, email, password })
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+      
+      login({ id: data.id, name: data.name, email: data.email });
+      navigate('/products');
+    } catch (err) {
+      setError('Erreur de connexion au serveur.');
+      console.error(err);
+    }
   };
 
   return (
@@ -65,6 +85,11 @@ const SignUp = () => {
               </p>
             </div>
 
+            {error && (
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-bold border border-red-200">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSignUp} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

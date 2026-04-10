@@ -1,11 +1,59 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const ProductDetails = () => {
+  const { id } = useParams();
+  const { addToCart } = useCart();
+  const [product, setProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // Ensure we start at the top of the page when opening details
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    fetchProduct();
+  }, [id]);
+
+  const fetchProduct = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/products/${id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setProduct(data);
+      } else {
+        setError(data.error || 'Produit non trouvé');
+      }
+    } catch (err) {
+      console.error('Error fetching product details:', err);
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="pt-32 pb-20 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <p className="text-stone-500 font-bold">Chargement des détails...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="pt-32 pb-20 text-center min-h-[60vh]">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">{error || 'Produit introuvable'}</h2>
+        <Link to="/products" className="text-primary hover:underline font-bold">Retour au catalogue</Link>
+      </div>
+    );
+  }
+
+  const imageUrl = product.image?.startsWith('data:') || product.image?.startsWith('http') 
+    ? product.image 
+    : `http://127.0.0.1:5000${product.image}`;
 
   return (
     <>
@@ -14,23 +62,28 @@ const ProductDetails = () => {
         <nav className="flex mb-8 text-sm font-label text-stone-500 dark:text-stone-400 gap-2 items-center">
           <Link className="hover:text-primary transition-colors font-medium" to="/products">Marketplace</Link>
           <span className="material-symbols-outlined text-xs">chevron_right</span>
-          <a className="hover:text-primary transition-colors font-medium" href="#">Machinery</a>
+          <span className="hover:text-primary transition-colors font-medium">{product.category}</span>
           <span className="material-symbols-outlined text-xs">chevron_right</span>
-          <span className="font-bold text-stone-900 dark:text-stone-50">Precision-Track 400XT</span>
+          <span className="font-bold text-stone-900 dark:text-stone-50">{product.name}</span>
         </nav>
         
         {/* Product Hero Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           {/* Gallery: Asymmetric Layout */}
           <div className="lg:col-span-7 grid grid-cols-6 gap-4">
-            <div className="col-span-6 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-900">
-              <img className="w-full h-[500px] object-cover transition-transform duration-700 hover:scale-105" data-alt="Close-up of a high-tech agricultural IoT sensor module mounted on a sleek carbon fiber frame in a sunny organic farm field" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvlWjU-MWo5OKTBIveaaYeETjgDHdRlJRjGXkKmzgGgpIqqesJ-LTOinfuT2nDX8e4dNbH9KgfHgzs0XzBr7qqSxpukyAmtVjwprD1OoYzqMdrhtKR9RPyT81b9AeJBhLnUJQUMLkWCWYe-gLiuhT9gifF74ag0dRr9B1GITY1dVOob-0eiyyTKsu5qKrxku6r7bPiN5WlqIW-bHMu_v3g_bbZTm_QyQmqk43H9PtfJOWJTPDkQ4e6jW1LKcrnCNLaJsEpxFeClD8" />
+            <div className="col-span-6 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-900 shadow-sm border border-stone-200/50">
+              <img 
+                className="w-full h-[500px] object-cover transition-transform duration-700 hover:scale-105" 
+                alt={product.name} 
+                src={imageUrl} 
+              />
+            </div>
+            {/* Gallery placeholders adapted to current product category */}
+            <div className="col-span-2 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-900">
+               <img className="w-full h-40 object-cover opacity-80" src={imageUrl} alt="Detail view" />
             </div>
             <div className="col-span-2 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-900">
-              <img className="w-full h-40 object-cover" data-alt="Modern sleek industrial design of an agricultural motherboard with copper tracing and minimalist green indicator lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHMwMMs4wxuIgNvDlMTR2l5XDke3xUyyKYETweCdAKYKRPnYZvlugqC782Du9fesc5fPS2tGyyy13jxPUTQu25kLYK0ILKLP4kMjF2Jx9ddlig30Fggr_73KLAwR2W2tyZKu1keMu3JdSgPt2D_21rOOF7y4e2Mfq1-q_X2tfSbypE-xFSXQt5rWz3zVuxNlPHzgAD2EHTh7wCUwhnakyPAXlG05yyBNRDngLGn7XsTVhZHtkCpyjBZne6EFSB1t0HrqiCGmXRyiA" />
-            </div>
-            <div className="col-span-2 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-900">
-              <img className="w-full h-40 object-cover" data-alt="Professional farmer using a tablet to monitor soil data from the sensor in a bright open wheat field at dawn" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk9VIAdIgIog8C1tC5v1qxJ4qwZtXdZji8rlOF8mcV5ITjbhfULv8VDPXLrRuGuqZgOBxFAby-EbmohTgllMfA5igu_RLtQdIk3IDq9AG9OrPZoTATHPAqpdT08g0GwXHp7bOwfoRwhFoPVLa40goG2O0LWCdvdAMXotUpkgAIy0GYEiA9T2i5puuyULZMnBg-Cp8uEk5hceV4707N0HNL1AWF8ZsfkASMxVoKc1gFnIs_TUJ7CfrbOXcWD7POWLULJ5sdS9-HjUs" />
+               <img className="w-full h-40 object-cover opacity-60" src={imageUrl} alt="Detail view" />
             </div>
             <div className="col-span-2 overflow-hidden rounded-xl bg-stone-200 dark:bg-stone-800 flex items-center justify-center cursor-pointer hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors group">
               <div className="text-center">
@@ -43,29 +96,41 @@ const ProductDetails = () => {
           {/* Purchase Controls */}
           <div className="lg:col-span-5 flex flex-col pt-2">
             <div className="mb-4">
-              <span className="inline-block px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 text-xs font-bold uppercase tracking-widest border border-green-200 dark:border-green-800/50">In Stock - Ready to Ship</span>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${
+                product.availability === 'In Stock' 
+                  ? 'bg-green-100 text-green-800 border-green-200' 
+                  : 'bg-amber-100 text-amber-800 border-amber-200'
+              }`}>
+                {product.availability || 'In Stock'} - Prêt pour livraison
+              </span>
             </div>
-            <h1 className="text-4xl lg:text-5xl font-extrabold text-stone-900 dark:text-stone-50 mb-4 leading-tight font-headline tracking-tight">Precision-Track 400XT</h1>
-            <p className="text-stone-600 dark:text-stone-300 text-lg mb-8 leading-relaxed font-medium">The ultimate IoT powerhouse for modern viticulture and row-crop precision. Real-time telemetry paired with enterprise-grade durability.</p>
+            <h1 className="text-4xl lg:text-5xl font-extrabold text-stone-900 dark:text-stone-50 mb-4 leading-tight font-headline tracking-tight">{product.name}</h1>
+            <p className="text-stone-600 dark:text-stone-300 text-lg mb-8 leading-relaxed font-medium">Une solution de haute performance pour vos besoins en {product.category.toLowerCase()}. Qualité certifiée AgriCentral.</p>
             <div className="mb-10">
-              <div className="text-sm font-bold text-stone-500 mb-1 uppercase tracking-widest">Investment Price</div>
-              <div className="text-5xl font-black text-stone-900 dark:text-stone-50 font-headline">1 245 000<span className="text-xl font-bold text-primary bg-primary/10 px-2 py-1 rounded ml-3">DH</span></div>
+              <div className="text-sm font-bold text-stone-500 mb-1 uppercase tracking-widest">Prix de l'investissement</div>
+              <div className="text-5xl font-black text-stone-900 dark:text-stone-50 font-headline">
+                {product.price}
+                <span className="text-xl font-bold text-primary bg-primary/10 px-2 py-1 rounded ml-3">TTC</span>
+              </div>
             </div>
             <div className="space-y-4">
-              <Link to="/cart" className="w-full h-14 bg-gradient-to-r from-green-800 to-green-700 dark:from-green-700 dark:to-green-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-lg hover:opacity-90 hover:shadow-green-900/20 transition-all active:scale-[0.98]">
+              <button 
+                onClick={() => addToCart(product)}
+                className="w-full h-14 bg-gradient-to-r from-green-800 to-green-700 dark:from-green-700 dark:to-green-600 text-white font-bold text-lg rounded-xl flex items-center justify-center gap-3 shadow-lg hover:opacity-90 hover:shadow-green-900/20 transition-all active:scale-[0.98]"
+              >
                 <span className="material-symbols-outlined">shopping_cart</span>
-                Add to Cart
-              </Link>
+                Ajouter au Panier
+              </button>
               <button className="w-full h-14 bg-stone-200/50 dark:bg-stone-800/50 text-stone-800 dark:text-stone-200 font-bold text-lg rounded-xl flex items-center justify-center gap-3 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors">
                 <span className="material-symbols-outlined">request_quote</span>
-                Get a Custom Quote
+                Demander un Devis Personnalisé
               </button>
             </div>
             <div className="mt-8 p-6 rounded-2xl bg-stone-100 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 flex items-start gap-4">
               <span className="material-symbols-outlined text-primary bg-primary/10 rounded-full p-2">verified</span>
               <div>
-                <h4 className="font-bold text-stone-900 dark:text-stone-50 text-lg mb-1">Precision Guarantee</h4>
-                <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Includes 2-year enterprise support and real-time field calibration assistance.</p>
+                <h4 className="font-bold text-stone-900 dark:text-stone-50 text-lg mb-1">Garantie Précision</h4>
+                <p className="text-sm text-stone-600 dark:text-stone-400 font-medium">Inclus un support technique dédié de 2 ans et assistance à la mise en service.</p>
               </div>
             </div>
           </div>
@@ -229,21 +294,21 @@ const ProductDetails = () => {
       <footer className="w-full py-12 px-8 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto">
           <div className="flex flex-col gap-4">
-            <span className="font-headline font-extrabold text-green-950 dark:text-white text-2xl">The Cultivated Ledger</span>
+            <span className="font-headline font-extrabold text-green-950 dark:text-white text-2xl">AgriCentral Marketplace</span>
             <p className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide max-w-sm">
-              © 2024 The Cultivated Ledger. All rights reserved. Built for the Field. Providing precision data and premium marketplace access for the modern agricultural enterprise.
+              © 2024 AgriCentral. Tous droits réservés. Construit pour le terrain. Fournir des données de précision et un accès au marché premium pour l'entreprise agricole moderne.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Legal</h4>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Légal</h4>
+              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Politique de Confidentialité</a>
+              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Conditions de Service</a>
             </div>
             <div className="flex flex-col gap-2">
-              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Company</h4>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Sustainability Report</a>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Contact Us</a>
+              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Société</h4>
+              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Rapport de Durabilité</a>
+              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Contactez-nous</a>
             </div>
           </div>
         </div>

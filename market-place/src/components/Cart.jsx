@@ -1,11 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 const Cart = () => {
+  const { cartItems, isLoading, updateQuantity, removeFromCart, cartTotal } = useCart();
+
   // Ensure we start at the top of the page when navigating to Cart
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const tva = Math.round(cartTotal * 0.2);
+  const totalWithTva = cartTotal + tva + (cartItems.length > 0 ? 125 : 0);
 
   return (
     <div className="bg-surface text-on-surface">
@@ -22,81 +28,53 @@ const Cart = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           {/* Product List Section */}
           <div className="lg:col-span-8 space-y-8">
-            {/* Product Card 1 */}
-            <div className="group relative flex flex-col md:flex-row gap-6 p-6 bg-stone-100 dark:bg-stone-900/50 rounded-lg transition-all hover:bg-stone-200/50 dark:hover:bg-stone-800/50">
-              <div className="w-full md:w-48 h-48 rounded-md overflow-hidden bg-stone-200 dark:bg-stone-800">
-                <img alt="Professional grade soil pH meter" className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" data-alt="Close-up of a modern professional soil pH meter with digital display on dark textured background with studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBr1IAOfK9LtzLGPnX_lmLS8VpYxmMwt2qw4-_W9lo22hqXwbNdSSVJ3PsL_Pdqopiez4S3m-_5i922VQwzO4IBo-H8aImWiLxqQXjaPmQs3xjxq4FlnwQSovE4vjbJqBqrn27dmb9grlmj0XjBYYziryzMLah61hWP7n0inG03r9ZIX-7P22HIyQUJvu3zbqCDthIV2zwbnR8kIlSkhMjveN4Jl9hSs8gikwnT46YQouOqN7QQGQ-zC9fYZsT9fmdBj7ToWHrlCeM" />
+            {isLoading ? (
+              <div className="text-center py-20 text-stone-500 font-bold">Chargement du inventaire...</div>
+            ) : cartItems.length === 0 ? (
+              <div className="text-center py-20 bg-stone-100 dark:bg-stone-900/40 rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-800">
+                <p className="text-stone-500 font-bold text-xl mb-4">Votre panier est vide.</p>
+                <Link to="/products" className="text-primary font-bold hover:underline">Découvrir nos produits</Link>
               </div>
-              <div className="flex-1 flex flex-col justify-between">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-stone-900 dark:text-stone-50 mb-1 font-headline">Analyseur de Sol Precision-X1</h3>
-                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300">
-                      En Stock
-                    </div>
+            ) : (
+              cartItems.map((item) => (
+                <div key={item.cart_item_id} className="group relative flex flex-col md:flex-row gap-6 p-6 bg-stone-100 dark:bg-stone-900/50 rounded-lg transition-all hover:bg-stone-200/50 dark:hover:bg-stone-800/50">
+                  <div className="w-full md:w-48 h-48 rounded-md overflow-hidden bg-stone-200 dark:bg-stone-800">
+                    <img alt={item.name} className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" src={item.image} />
                   </div>
-                  <button className="p-2 text-stone-400 hover:text-red-500 transition-colors" title="Supprimer produit">
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
-                <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Modifier quantité</span>
-                    <div className="flex items-center bg-white dark:bg-stone-900 rounded-md overflow-hidden border border-stone-200 dark:border-stone-800">
-                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                        <span className="material-symbols-outlined text-sm">remove</span>
-                      </button>
-                      <span className="px-6 py-2 font-bold text-stone-900 dark:text-stone-50">1</span>
-                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                        <span className="material-symbols-outlined text-sm">add</span>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-bold text-stone-900 dark:text-stone-50 mb-1 font-headline">{item.name}</h3>
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.availability === 'In Stock' ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300' : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'}`}>
+                          {item.availability === 'In Stock' ? 'En Stock' : 'Stock Limité'}
+                        </div>
+                      </div>
+                      <button onClick={() => removeFromCart(item.cart_item_id)} className="p-2 text-stone-400 hover:text-red-500 transition-colors" title="Supprimer produit">
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm text-stone-500 block">Prix unitaire</span>
-                    <span className="text-2xl font-black text-primary font-headline">3 490 DH</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Product Card 2 */}
-            <div className="group relative flex flex-col md:flex-row gap-6 p-6 bg-stone-100 dark:bg-stone-900/50 rounded-lg transition-all hover:bg-stone-200/50 dark:hover:bg-stone-800/50">
-              <div className="w-full md:w-48 h-48 rounded-md overflow-hidden bg-stone-200 dark:bg-stone-800">
-                <img alt="Organic nitrogen fertilizer bag" className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" data-alt="High-end packaging of organic nitrogen fertilizer on a minimalist wooden bench with soft morning sunlight casting shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBncONA6AERv5bej8g-1aiwyIxsWTYdgCWdOSuOlbhb9iQWqov_NUfPwTwlaucrsPJVHJPGBvxQMW82opoaU0DBJDHT0oTOwJpE5YzBtIcC9oDAVE_TmFVVPzwOFo1urfzS4ezchZZEcn13q7SWuxeZ4zptU3kxUyoQbXlPvAHBfDvpvw02BpkyShNmroGgWxFeZu73KXOSzifEMScl9TDRy4DjJfQujqGYVHVhJjAsWQk1MwIarSHQkrRPyLFhNk_zyTk7xDiAbxE" />
-              </div>
-              <div className="flex-1 flex flex-col justify-between">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-stone-900 dark:text-stone-50 mb-1 font-headline">Fertilisant Azoté Organique (25kg)</h3>
-                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
-                      Stock Limité
+                    <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Modifier quantité</span>
+                        <div className="flex items-center bg-white dark:bg-stone-900 rounded-md overflow-hidden border border-stone-200 dark:border-stone-800">
+                          <button onClick={() => updateQuantity(item.cart_item_id, item.quantity - 1)} className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                            <span className="material-symbols-outlined text-sm">remove</span>
+                          </button>
+                          <span className="px-6 py-2 font-bold text-stone-900 dark:text-stone-50">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)} className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+                            <span className="material-symbols-outlined text-sm">add</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm text-stone-500 block">Prix unitaire</span>
+                        <span className="text-2xl font-black text-primary font-headline">{item.price}</span>
+                      </div>
                     </div>
                   </div>
-                  <button className="p-2 text-stone-400 hover:text-red-500 transition-colors" title="Supprimer produit">
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
                 </div>
-                <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Modifier quantité</span>
-                    <div className="flex items-center bg-white dark:bg-stone-900 rounded-md overflow-hidden border border-stone-200 dark:border-stone-800">
-                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                        <span className="material-symbols-outlined text-sm">remove</span>
-                      </button>
-                      <span className="px-6 py-2 font-bold text-stone-900 dark:text-stone-50">4</span>
-                      <button className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
-                        <span className="material-symbols-outlined text-sm">add</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm text-stone-500 block">Prix unitaire</span>
-                    <span className="text-2xl font-black text-primary font-headline">895 DH</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              ))
+            )}
 
             <div className="pt-8">
               <Link className="inline-flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all duration-300" to="/products">
@@ -113,26 +91,33 @@ const Cart = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center text-stone-600 dark:text-stone-400">
                   <span className="font-medium">Sous-total</span>
-                  <span className="font-bold text-stone-900 dark:text-stone-50">7 070 DH</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">{cartTotal.toLocaleString()} DH</span>
                 </div>
                 <div className="flex justify-between items-center text-stone-600 dark:text-stone-400">
                   <span className="font-medium">Livraison estimée</span>
-                  <span className="font-bold text-stone-900 dark:text-stone-50">125 DH</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">{cartItems.length > 0 ? "125 DH" : "0 DH"}</span>
                 </div>
                 <div className="flex justify-between items-center text-stone-600 dark:text-stone-400 pb-6">
                   <span className="font-medium">Taxes (TVA 20%)</span>
-                  <span className="font-bold text-stone-900 dark:text-stone-50">1 414 DH</span>
+                  <span className="font-bold text-stone-900 dark:text-stone-50">{tva.toLocaleString()} DH</span>
                 </div>
 
                 <div className="pt-6 border-t border-stone-200 dark:border-stone-800">
                   <div className="flex justify-between items-end mb-8">
                     <span className="text-sm font-bold uppercase tracking-widest text-stone-500">Total prix</span>
-                    <span className="text-4xl font-black text-primary font-headline">8 609 DH</span>
+                    <span className="text-4xl font-black text-primary font-headline">{totalWithTva.toLocaleString()} DH</span>
                   </div>
-                  <Link to="/checkout" className="w-full h-14 bg-gradient-to-r from-green-800 to-green-700 dark:from-green-700 dark:to-green-600 text-white font-bold rounded-md flex items-center justify-center gap-3 shadow-lg hover:opacity-90 transition-all active:scale-[0.98]">
-                    Commander
-                    <span className="material-symbols-outlined">shopping_cart_checkout</span>
-                  </Link>
+                  {cartItems.length > 0 ? (
+                    <Link to="/checkout" className="w-full h-14 bg-gradient-to-r from-green-800 to-green-700 dark:from-green-700 dark:to-green-600 text-white font-bold rounded-md flex items-center justify-center gap-3 shadow-lg hover:opacity-90 transition-all active:scale-[0.98]">
+                      Commander
+                      <span className="material-symbols-outlined">shopping_cart_checkout</span>
+                    </Link>
+                  ) : (
+                    <button disabled className="w-full h-14 bg-stone-300 text-white font-bold rounded-md flex items-center justify-center gap-3 cursor-not-allowed">
+                      Commander
+                      <span className="material-symbols-outlined">shopping_cart_checkout</span>
+                    </button>
+                  )}
                   <p className="mt-4 text-center text-xs text-stone-400 leading-relaxed font-medium">
                     Les délais de livraison pour les équipements techniques peuvent varier selon la zone géographique de votre exploitation.
                   </p>
@@ -140,16 +125,6 @@ const Cart = () => {
               </div>
             </div>
 
-            {/* Price Ticker / Promo */}
-            <div className="mt-6 bg-stone-800 text-white p-6 rounded-lg flex items-center gap-4 border border-stone-700">
-              <div className="p-3 bg-stone-700 rounded-md">
-                <span className="material-symbols-outlined text-green-400">verified</span>
-              </div>
-              <div>
-                <p className="font-bold leading-tight font-headline">Offre Exclusive Estate</p>
-                <p className="text-sm text-stone-300">Livraison offerte dès 10 000 DH d'achat.</p>
-              </div>
-            </div>
           </div>
         </div>
       </main>
