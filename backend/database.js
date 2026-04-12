@@ -6,18 +6,31 @@ const isProd = process.env.DATABASE_URL;
 const dbUrl = isProd ? process.env.DATABASE_URL : `file:${path.resolve(__dirname, 'market.sqlite')}`;
 const authToken = process.env.DATABASE_AUTH_TOKEN;
 
+// Fix: Turso sometimes has issues with the libsql:// protocol in certain library versions.
+// We convert it to https:// for the REST client to be more stable.
+let finalDbUrl = dbUrl;
+if (isProd && dbUrl && dbUrl.startsWith('libsql://')) {
+  finalDbUrl = dbUrl.replace('libsql://', 'https://');
+}
+
 console.log('--- Database Connection Info ---');
 console.log(`Mode: ${isProd ? 'Production (Turso Cloud)' : 'Development (Local SQLite)'}`);
-console.log(`URL: ${dbUrl}`);
+console.log(`Original URL: ${dbUrl}`);
+console.log(`Final URL: ${finalDbUrl}`);
 if (isProd) {
-  console.log(`Auth Token: ${authToken ? 'Token present' : 'MISSING TOKEN'}`);
+  if (authToken) {
+    const masked = authToken.substring(0, 5) + '...' + authToken.substring(authToken.length - 5);
+    console.log(`Auth Token: Present (${masked})`);
+  } else {
+    console.log('Auth Token: MISSING TOKEN');
+  }
 }
 console.log('-------------------------------');
 
 let client;
 try {
   client = createClient({
-    url: dbUrl,
+    url: finalDbUrl,
     authToken: authToken,
   });
 } catch (error) {
