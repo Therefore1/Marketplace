@@ -53,9 +53,12 @@ const db = {
     // In production, use the direct Web API which we proved works
     if (isProd) {
       // Turso's pipeline API expects arguments to be "Value" objects (type + value)
+      // Note: Integers and Floats must be passed as strings to avoid precision issues in JSON
       const mappedArgs = args.map(arg => {
-        if (typeof arg === 'number') return { type: 'integer', value: arg };
-        if (typeof arg === 'boolean') return { type: 'integer', value: arg ? 1 : 0 };
+        if (typeof arg === 'number') {
+          return { type: Number.isInteger(arg) ? 'integer' : 'float', value: String(arg) };
+        }
+        if (typeof arg === 'boolean') return { type: 'integer', value: arg ? '1' : '0' };
         if (arg === null || arg === undefined) return { type: 'null' };
         return { type: 'text', value: String(arg) };
       });
