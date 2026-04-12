@@ -237,10 +237,10 @@ const initDb = async function initDb() {
             FOREIGN KEY (product_id) REFERENCES products (id)
         )`);
 
-        // Seed data
-        const countRes = await db.execute('SELECT count(*) as count FROM products');
-        if (countRes.rows[0].count === 0) {
-            console.log('Seeding initial products data...');
+        // Seed data check
+        const productsCheck = await db.execute('SELECT id FROM products LIMIT 1');
+        if (productsCheck.rows.length === 0) {
+            console.log('No products found. Seeding initial products data...');
             const seedData = [
                 {
                     name: "Precision-Track 400XT", category: "Matériel", price: "1 245 000 DH", numericPrice: 1245000,
