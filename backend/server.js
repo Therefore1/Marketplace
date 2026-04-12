@@ -17,12 +17,17 @@ app.get('/api/health', (req, res) => {
 
 // Get all products
 app.get('/api/products', (req, res) => {
+    // Force browser not to cache empty results
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    
     db.all('SELECT * FROM products', [], (err, rows) => {
         if (err) {
+            console.error('API Error (Products):', err.message);
             res.status(400).json({ error: err.message });
             return;
         }
-        res.json(rows);
+        console.log(`API Success: Returning ${rows ? rows.length : 0} products.`);
+        res.json(rows || []);
     });
 });
 
