@@ -62,11 +62,17 @@ const db = {
       
       // Transform the Turso pipeline response back to the format the app expects
       const result = data.results[0].response.result;
-      return { rows: result.rows.map(row => {
+      const rows = (result.rows || []).map(row => {
         const obj = {};
         result.cols.forEach((col, i) => obj[col.name] = row[i].value);
         return obj;
-      })};
+      });
+
+      return { 
+        rows,
+        affected_row_count: result.affected_row_count,
+        last_insert_rowid: result.last_insert_rowid
+      };
     }
 
     // In local development, use the library or direct sqlite3 (via client)
