@@ -2,15 +2,19 @@ require('dotenv').config();
 const { createClient } = require('@libsql/client');
 const path = require('path');
 
-const isProd = process.env.DATABASE_URL;
-const dbUrl = isProd ? process.env.DATABASE_URL : `file:${path.resolve(__dirname, 'market.sqlite')}`;
-const authToken = process.env.DATABASE_AUTH_TOKEN;
+const rawDbUrl = (process.env.DATABASE_URL || '').trim();
+const isProd = !!rawDbUrl;
+const dbUrl = isProd ? rawDbUrl : `file:${path.resolve(__dirname, 'market.sqlite')}`;
+const authToken = (process.env.DATABASE_AUTH_TOKEN || '').trim();
 
 // Fix: Turso sometimes has issues with the libsql:// protocol in certain library versions.
 // We convert it to https:// for the REST client to be more stable.
 let finalDbUrl = dbUrl;
-if (isProd && dbUrl && dbUrl.startsWith('libsql://')) {
+if (isProd && dbUrl.startsWith('libsql://')) {
   finalDbUrl = dbUrl.replace('libsql://', 'https://');
+}
+if (isProd && !finalDbUrl.startsWith('http')) {
+  finalDbUrl = 'https://' + finalDbUrl;
 }
 
 console.log('--- Database Connection Info ---');
@@ -104,7 +108,23 @@ const db = {
 const initDb = async function initDb() {
   console.log('Initializing Database...');
   try {
-    // Basic connectivity check
+    // Manual Handshake Check (using standard fetch)
+    if (isProd) {
+        console.log('Performing manual handshake with Turso...');
+        const response = await fetch(`${finalDbUrl}/v2/pipeline`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql: 'SELECT 1' } }] })
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Manual handshake failed! Status: ${response.status}, Details: ${errText}`);
+        } else {
+            console.log('Manual handshake successful!');
+        }
+    }
+
+    // Basic connectivity check using the client
     await client.execute('SELECT 1');
     console.log('Database connection successful.');
 
