@@ -43,16 +43,58 @@ try {
 
 // A wrapper to maintain compatibility with the existing sqlite3 callback-based API
 const db = {
-  execute: (sql, args = []) => client.execute({ sql, args }),
-  
+  execute: async function(sql, params) {
+    let args = params || [];
+    if (typeof sql === 'object') {
+      args = sql.args || [];
+      sql = sql.sql;
+    }
+    
+    // In production, use the direct Web API which we proved works
+    if (isProd) {
+      const response = await fetch(`${finalDbUrl}/v2/pipeline`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql, args } }] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Database request failed');
+      
+      // Transform the Turso pipeline response back to the format the app expects
+      const result = data.results[0].response.result;
+      return { rows: result.rows.map(row => {
+        const obj = {};
+        result.cols.forEach((col, i) => obj[col.name] = row[i].value);
+        return obj;
+      })};
+    }
+
+    // In local development, use the library or direct sqlite3 (via client)
+    return client.execute({ sql, args });
+  },
+
+  all: function(sql, params, callback) {
+    if (typeof params === 'function') {
+      callback = params;
+      params = [];
+    }
+    this.execute(sql, params)
+      .then(result => {
+        if (callback) callback(null, result.rows);
+      })
+      .catch(err => {
+        if (callback) callback(err);
+      });
+  },
+
   run: function(sql, params, callback) {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
-    client.execute({ sql, args: params })
+    this.execute(sql, params)
       .then(result => {
-        if (callback) callback.call({ lastID: result.lastInsertRowid }, null);
+        if (callback) callback(null);
       })
       .catch(err => {
         if (callback) callback(err);
@@ -64,23 +106,9 @@ const db = {
       callback = params;
       params = [];
     }
-    client.execute({ sql, args: params })
+    this.execute(sql, params)
       .then(result => {
         if (callback) callback(null, result.rows[0]);
-      })
-      .catch(err => {
-        if (callback) callback(err);
-      });
-  },
-
-  all: function(sql, params, callback) {
-    if (typeof params === 'function') {
-      callback = params;
-      params = [];
-    }
-    client.execute({ sql, args: params })
-      .then(result => {
-        if (callback) callback(null, result.rows);
       })
       .catch(err => {
         if (callback) callback(err);
@@ -91,7 +119,7 @@ const db = {
     return {
       run: function(...args) {
         const callback = typeof args[args.length - 1] === 'function' ? args.pop() : null;
-        client.execute({ sql, args })
+        db.execute({ sql, args })
           .then(result => {
             if (callback) callback.call({ lastID: result.lastInsertRowid }, null);
           })
@@ -124,8 +152,8 @@ const initDb = async function initDb() {
         }
     }
 
-    // Basic connectivity check using the client
-    await client.execute('SELECT 1');
+    // Basic connectivity check using our new executor
+    await db.execute('SELECT 1');
     console.log('Database connection successful.');
 
     await db.execute(`CREATE TABLE IF NOT EXISTS products (
