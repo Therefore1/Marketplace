@@ -14,7 +14,7 @@ export const CartProvider = ({ children }) => {
         if (!isLoggedIn || !user?.id) return;
         setIsLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/${user.id}`);
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${user.id}`);
             const data = await response.json();
             if (response.ok) {
                 setCartItems(data);
@@ -37,7 +37,7 @@ export const CartProvider = ({ children }) => {
     const addToCart = async (productId, quantity = 1) => {
         if (!isLoggedIn || !user?.id) return false;
         try {
-            const response = await fetch('http://localhost:5000/api/cart', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, productId, quantity })
@@ -55,7 +55,7 @@ export const CartProvider = ({ children }) => {
     const updateQuantity = async (cartItemId, newQuantity) => {
         if (newQuantity < 1) return;
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/${cartItemId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${cartItemId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ quantity: newQuantity })
@@ -72,7 +72,7 @@ export const CartProvider = ({ children }) => {
 
     const removeFromCart = async (cartItemId) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/${cartItemId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${cartItemId}`, {
                 method: 'DELETE'
             });
             if (response.ok) {
@@ -86,7 +86,7 @@ export const CartProvider = ({ children }) => {
     const clearCart = async () => {
         if (!user?.id) return;
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/user/${user.id}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/user/${user.id}`, {
                 method: 'DELETE'
             });
             if (response.ok) {

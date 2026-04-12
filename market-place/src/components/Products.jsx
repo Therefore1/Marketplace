@@ -37,7 +37,7 @@ const Products = () => {
 
   useEffect(() => {
     // Fetch products
-    fetch('http://127.0.0.1:5000/api/products')
+    fetch(`${import.meta.env.VITE_API_URL}/api/products`)
       .then(res => res.json())
       .then(data => {
         setProductsData(data);
@@ -50,7 +50,7 @@ const Products = () => {
 
     // Fetch wishlist if logged in
     if (isLoggedIn && user?.id) {
-      fetch(`http://127.0.0.1:5000/api/wishlist/${user.id}`)
+      fetch(`${import.meta.env.VITE_API_URL}/api/wishlist/${user.id}`)
         .then(res => res.json())
         .then(data => setWishlist(data.map(p => p.id)))
         .catch(err => console.error('Error fetching wishlist:', err));
@@ -67,7 +67,7 @@ const Products = () => {
     const method = isFav ? 'DELETE' : 'POST';
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/wishlist', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wishlist`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, productId })
@@ -243,7 +243,7 @@ const Products = () => {
                       alt={product.name} 
                       src={product.image?.startsWith('data:') || product.image?.startsWith('http') 
                         ? product.image 
-                        : `http://127.0.0.1:5000${product.image}`} 
+                        : `${import.meta.env.VITE_API_URL}${product.image}`} 
                     />
                     <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest text-primary">{product.category}</span>
                   </div>

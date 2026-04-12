@@ -18,7 +18,7 @@ const ProductDetails = () => {
   const fetchProduct = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/products/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`);
       const data = await response.json();
       if (response.ok) {
         setProduct(data);
@@ -53,7 +53,7 @@ const ProductDetails = () => {
 
   const imageUrl = product.image?.startsWith('data:') || product.image?.startsWith('http') 
     ? product.image 
-    : `http://127.0.0.1:5000${product.image}`;
+    : `${import.meta.env.VITE_API_URL}${product.image}`;
 
   return (
     <>
