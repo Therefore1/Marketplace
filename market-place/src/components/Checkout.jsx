@@ -50,7 +50,7 @@ const Checkout = () => {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/orders', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
@@ -68,8 +68,8 @@ const Checkout = () => {
   };
 
   return (
-    <div className="bg-surface text-on-surface">
-      <main className="pt-24 pb-20 px-6 md:px-12 max-w-[1440px] mx-auto mt-16">
+    <div className="bg-surface text-on-surface pb-32">
+      <main className="pt-24 pb-20 px-6 md:px-12 max-w-[1440px] mx-auto mt-16 px-6">
         <header className="mb-12">
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface font-headline">Finaliser la Commande</h1>
           <p className="text-stone-500 dark:text-stone-400 mt-2 font-medium">AgriCentral Marketplace — Étape de Paiement</p>

@@ -12,6 +12,7 @@ import Orders from './components/Orders';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
 import Profile from './components/Profile';
+import MobileNav from './components/MobileNav';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/profile" element={<Profile />} />
           </Routes>
+          <MobileNav />
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

@@ -19,7 +19,7 @@ const Orders = () => {
 
   const fetchOrders = () => {
     setIsLoading(true);
-    fetch(`http://127.0.0.1:5000/api/orders/${user.id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/orders/${user.id}`)
       .then(res => res.json())
       .then(data => {
         setOrders(data);
@@ -35,7 +35,7 @@ const Orders = () => {
     setIsDetailLoading(true);
     scrollTo(0, 0);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/orders/details/${orderNum}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/details/${orderNum}`);
       const data = await response.json();
       setSelectedOrder(data);
     } catch (err) {
@@ -64,7 +64,7 @@ const Orders = () => {
 
   if (selectedOrder) {
     return (
-      <div className="bg-[#fafaf5] dark:bg-stone-950 min-h-screen text-on-surface">
+      <div className="bg-[#fafaf5] dark:bg-stone-950 min-h-screen text-on-surface pb-32">
         <main className="pt-32 pb-20 px-6 md:px-12 max-w-screen-xl mx-auto mt-16 font-body">
           {/* Header Section */}
           <header className="mb-12">
@@ -147,7 +147,7 @@ const Orders = () => {
                               className="w-full h-full object-cover" 
                               src={item.product_image?.startsWith('data:') || item.product_image?.startsWith('http') 
                                 ? item.product_image 
-                                : `http://127.0.0.1:5000${item.product_image}`} 
+                                : `${import.meta.env.VITE_API_URL}${item.product_image}`} 
                               alt={item.product_name} 
                             />
                           </div>
@@ -240,7 +240,7 @@ const Orders = () => {
   }
 
   return (
-    <div className="bg-[#fafaf5] dark:bg-stone-950 min-h-screen text-on-surface">
+    <div className="bg-[#fafaf5] dark:bg-stone-950 min-h-screen text-on-surface pb-32">
       <main className="pt-32 pb-20 px-6 md:px-12 max-w-screen-xl mx-auto mt-16 font-body">
         {/* Header Section */}
         <header className="mb-12">

@@ -25,18 +25,22 @@ const Products = () => {
   const [activeCategory, setActiveCategory] = useState(location.state?.category || 'All Products');
   const [visibleProducts, setVisibleProducts] = useState(8);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [appliedMin, setAppliedMin] = useState('');
+  const [appliedMax, setAppliedMax] = useState('');
+  const [sortBy, setSortBy] = useState('Popularity');
 
   const handleLoadMore = () => {
     setVisibleProducts(prev => prev + 4);
   };
 
   useEffect(() => {
-    // Reset visible products when category changes
     setVisibleProducts(8);
   }, [activeCategory]);
 
   useEffect(() => {
-    // Fetch products
     fetch(`${import.meta.env.VITE_API_URL}/api/products`)
       .then(res => res.json())
       .then(data => {
@@ -48,7 +52,6 @@ const Products = () => {
         setIsLoading(false);
       });
 
-    // Fetch wishlist if logged in
     if (isLoggedIn && user?.id) {
       fetch(`${import.meta.env.VITE_API_URL}/api/wishlist/${user.id}`)
         .then(res => res.json())
@@ -62,17 +65,14 @@ const Products = () => {
       navigate('/login');
       return;
     }
-
     const isFav = wishlist.includes(productId);
     const method = isFav ? 'DELETE' : 'POST';
-
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wishlist`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, productId })
       });
-
       if (response.ok) {
         if (isFav) {
           setWishlist(wishlist.filter(id => id !== productId));
@@ -91,10 +91,6 @@ const Products = () => {
       return;
     }
     const success = await addToCart(productId, 1);
-    if (success) {
-      // Simple feedback could be added here
-      // alert('Produit ajouté au panier !');
-    }
   };
 
   useEffect(() => {
@@ -102,11 +98,6 @@ const Products = () => {
       setActiveCategory(location.state.category);
     }
   }, [location.state?.category]);
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [appliedMin, setAppliedMin] = useState('');
-  const [appliedMax, setAppliedMax] = useState('');
-  const [sortBy, setSortBy] = useState('Popularity');
 
   let filteredProducts = activeCategory === 'All Products'
     ? [...productsData]
@@ -118,7 +109,6 @@ const Products = () => {
   if (appliedMax !== '') {
     filteredProducts = filteredProducts.filter(p => p.numericPrice <= Number(appliedMax));
   }
-
   if (searchTerm.trim() !== '') {
     filteredProducts = filteredProducts.filter(p =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -129,103 +119,93 @@ const Products = () => {
     if (sortBy === 'Price: Low to High') return a.numericPrice - b.numericPrice;
     if (sortBy === 'Price: High to Low') return b.numericPrice - a.numericPrice;
     if (sortBy === 'Newest Arrivals') return b.id - a.id;
-    return a.id - b.id; // Popularity default
+    return a.id - b.id;
   });
 
   return (
     <>
-      <div className="flex flex-col md:flex-row pt-16 min-h-screen">
-        {/* SideNavBar / Filter Sidebar */}
-        <aside className="flex md:h-[calc(100vh-4rem)] max-h-[40vh] md:max-h-none w-full md:w-64 border-b md:border-b-0 md:border-r border-stone-200/80 dark:border-stone-800/80 sticky top-16 z-30 bg-stone-100 dark:bg-stone-950 flex-col gap-4 py-6 md:py-8 px-4 overflow-y-auto shrink-0">
+      <div className="flex flex-col md:flex-row pt-16 min-h-screen relative overflow-hidden">
+        {/* Toggle Filters Button for Mobile */}
+        <button 
+          onClick={() => setShowFilters(true)}
+          className="md:hidden fixed bottom-24 right-6 z-[60] bg-primary text-on-primary w-14 h-14 rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-all outline-none"
+        >
+          <span className="material-symbols-outlined text-2xl">filter_list</span>
+        </button>
+
+        {/* SideNavBar / Filter Sidebar - Mobile Drawer Style */}
+        <div className={`fixed inset-0 z-[70] md:hidden transition-opacity duration-300 ${showFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFilters(false)}></div>
+        </div>
+
+        <aside className={`
+          flex flex-col gap-4 py-8 px-5 shrink-0 z-[80] transition-transform duration-300 ease-in-out
+          fixed md:sticky left-0 top-0 md:top-16 h-full md:h-[calc(100vh-4rem)] bg-stone-100 dark:bg-stone-950
+          w-4/5 max-w-xs md:w-64 border-r border-stone-200/80 dark:border-stone-800/80 overflow-y-auto
+          ${showFilters ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}>
+          <div className="flex items-center justify-between md:hidden mb-4 border-b border-stone-200 dark:border-stone-800 pb-4">
+            <span className="font-bold text-lg text-primary">Filters</span>
+            <button onClick={() => setShowFilters(false)} className="material-symbols-outlined p-2 text-stone-500">close</button>
+          </div>
 
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2 px-4">Categories</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2 px-2">Categories</p>
             {categoriesData.map(cat => (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-md transition-all ${activeCategory === cat.id
-                    ? 'bg-green-800 dark:bg-green-700 text-white dark:text-stone-50 font-bold active:translate-x-1 shadow-sm'
+                onClick={() => { setActiveCategory(cat.id); if(window.innerWidth < 768) setShowFilters(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${activeCategory === cat.id
+                    ? 'bg-primary text-on-primary font-bold shadow-md'
                     : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800'
                   }`}
               >
-                <span className="material-symbols-outlined text-sm">{cat.icon}</span>
-                <span className="font-inter text-sm font-medium">{cat.name}</span>
+                <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                <span className="text-sm font-medium">{cat.name}</span>
               </button>
             ))}
           </div>
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center justify-between px-4">
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between px-2">
               <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">Price Range</p>
               <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">DH</span>
             </div>
-            <div className="px-4 flex items-center gap-2">
-              <div className="flex-1">
-                <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min" className="w-full font-medium px-3 py-2 bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-stone-400" />
-              </div>
-              <span className="text-stone-300 font-bold">-</span>
-              <div className="flex-1">
-                <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max" className="w-full font-medium px-3 py-2 bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-stone-400" />
-              </div>
+            <div className="px-2 flex items-center gap-2">
+              <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Min" className="flex-1 px-3 py-2.5 bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+              <span className="text-stone-300">-</span>
+              <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Max" className="flex-1 px-3 py-2.5 bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
             </div>
-          </div>
-          <div className="mt-8 space-y-2">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 px-4">Availability</p>
-            <label className="flex items-center gap-3 px-4 py-1 cursor-pointer">
-              <input defaultChecked className="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
-              <span className="text-sm font-medium">In Stock</span>
-            </label>
-            <label className="flex items-center gap-3 px-4 py-1 cursor-pointer">
-              <input className="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox" />
-              <span className="text-sm font-medium">Limited Stock</span>
-            </label>
           </div>
           <div className="mt-auto pt-6 border-t border-stone-200/50">
-            <button onClick={() => { setAppliedMin(minPrice); setAppliedMax(maxPrice); }} className="w-full bg-primary text-on-primary py-3 rounded-md font-bold text-sm shadow-sm hover:opacity-90 transition-opacity">Apply Filters</button>
-            <div className="mt-4 flex flex-col gap-1">
-              <button className="w-full flex items-center gap-3 text-stone-500 px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-md transition-colors text-sm">
-                <span className="material-symbols-outlined text-sm">help_center</span>
-                Support
-              </button>
-              <button className="w-full flex items-center gap-3 text-stone-500 px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-md transition-colors text-sm">
-                <span className="material-symbols-outlined text-sm">settings</span>
-                Settings
-              </button>
-            </div>
+            <button onClick={() => { setAppliedMin(minPrice); setAppliedMax(maxPrice); setShowFilters(false); }} className="w-full bg-primary text-on-primary py-4 rounded-xl font-bold text-sm shadow-md hover:opacity-90 active:scale-95 transition-all">Apply All Filters</button>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 bg-surface-container-low p-6 md:p-10">
-          {isLoading ? (<div className="flex justify-center items-center h-64"><p className="text-stone-500 font-bold">Loading products...</p></div>) : (<>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-              <div className="flex-1 w-full md:w-auto">
-                <h1 className="text-3xl md:text-4xl font-headline font-extrabold text-on-surface tracking-tighter mb-1">Product Catalog</h1>
-                <p className="text-on-surface-variant font-medium mb-4">Showing {filteredProducts.length} product(s)</p>
-
-                {/* Search Bar Implementation */}
-                <div className="relative max-w-xl group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors">search</span>
+        <main className="flex-1 bg-surface-container-low p-4 md:p-10 pb-32 md:pb-10 overflow-x-hidden">
+          {isLoading ? (<div className="flex justify-center items-center h-64"><p className="text-stone-500 font-bold animate-pulse text-lg">Loading precision marketplace...</p></div>) : (<>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+              <div className="flex-1 w-full">
+                <h1 className="text-2xl md:text-4xl font-headline font-black text-on-surface tracking-tighter mb-1">Stock Portfolio</h1>
+                <p className="text-on-surface-variant font-medium text-xs md:text-sm mb-6 uppercase tracking-wider">Inventory Availability: {filteredProducts.length} Units Found</p>
+                <div className="relative w-full max-w-xl">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">search</span>
                   <input
                     type="text"
-                    placeholder="Rechercher un produit "
+                    placeholder="Search the ledger..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-800 rounded-2xl pl-12 pr-4 py-3.5 text-on-surface focus:border-primary focus:ring-0 transition-all outline-none shadow-sm placeholder:text-stone-400"
+                    className="w-full bg-white dark:bg-stone-900/50 backdrop-blur-sm border-2 border-stone-200 dark:border-stone-800 rounded-2xl pl-12 pr-4 py-4 text-on-surface focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none shadow-sm placeholder:text-stone-400 text-sm md:text-base font-medium"
                   />
                   {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
-                    >
-                      <span className="material-symbols-outlined text-sm">close</span>
+                    <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                      <span className="material-symbols-outlined text-lg">close</span>
                     </button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-white dark:bg-stone-900 p-2 px-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm shrink-0 self-start md:self-auto">
-                <label className="text-xs font-bold text-stone-400 uppercase tracking-wider">Sort By</label>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer pr-10 text-on-surface">
+              <div className="flex items-center gap-3 w-full md:w-auto bg-white dark:bg-stone-900 p-3 px-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm overflow-hidden">
+                <span className="material-symbols-outlined text-stone-400 text-sm">sort</span>
+                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer flex-1 md:pr-10 text-on-surface truncate">
                   <option>Popularity</option>
                   <option>Price: Low to High</option>
                   <option>Price: High to Low</option>
@@ -283,7 +263,6 @@ const Products = () => {
               ))}
             </div>
 
-            {/* Pagination Area */}
             {filteredProducts.length > visibleProducts && (
               <div className="mt-16 flex flex-col items-center gap-6">
                 <button
@@ -298,28 +277,11 @@ const Products = () => {
         </main>
       </div>
 
-      {/* Footer */}
-      <footer className="w-full py-12 px-8 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          <div className="flex flex-col gap-4">
-            <span className="font-manrope font-extrabold text-green-950 dark:text-white text-2xl">The Cultivated Ledger</span>
-            <p className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide max-w-sm">
-              © 2024 The Cultivated Ledger. All rights reserved. Built for the Field. Providing precision data and premium marketplace access for the modern agricultural enterprise.
-            </p>
+      <footer className="w-full py-12 px-8 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 pb-32 md:pb-12 text-center md:text-left">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <span className="font-manrope font-extrabold text-green-950 dark:text-white text-xl">The Cultivated Ledger</span>
+            <p className="text-stone-400 text-[10px] uppercase tracking-widest">© 2024 The Cultivated Ledger. Precision Earth Engineering.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Legal</h4>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
-            </div>
-            <div className="flex flex-col gap-2">
-              <h4 className="font-bold text-green-900 dark:text-green-100 text-sm mb-2">Company</h4>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Sustainability Report</a>
-              <a className="text-stone-500 dark:text-stone-400 font-inter text-xs tracking-wide hover:underline decoration-green-800/30 transition-opacity opacity-80 hover:opacity-100" href="#">Contact Us</a>
-            </div>
-          </div>
-        </div>
       </footer>
     </>
   );

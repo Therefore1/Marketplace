@@ -77,6 +77,13 @@
             },
           }
         </script>
+    <style>
+      /* Hide scrollbar for horizontal nav menus on mobile */
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      /* Remove tap highlight on mobile */
+      * { -webkit-tap-highlight-color: transparent; }
+    </style>
   </head>
   <body class="bg-surface text-on-surface antialiased">
     <div id="root"></div>

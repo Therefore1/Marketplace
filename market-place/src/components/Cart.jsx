@@ -14,7 +14,7 @@ const Cart = () => {
   const totalWithTva = cartTotal + tva + (cartItems.length > 0 ? 125 : 0);
 
   return (
-    <div className="bg-surface text-on-surface">
+    <div className="bg-surface text-on-surface pb-32">
       <main className="max-w-screen-2xl mx-auto px-6 py-12 md:py-20 mt-16">
         {/* Editorial Header */}
         <div className="mb-12">

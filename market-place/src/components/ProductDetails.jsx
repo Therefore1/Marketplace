@@ -57,7 +57,7 @@ const ProductDetails = () => {
 
   return (
     <>
-      <main className="pt-24 pb-20 max-w-7xl mx-auto px-6 lg:px-8">
+      <main className="pt-24 pb-32 max-w-7xl mx-auto px-6 lg:px-8">
         {/* Breadcrumbs */}
         <nav className="flex mb-8 text-sm font-label text-stone-500 dark:text-stone-400 gap-2 items-center">
           <Link className="hover:text-primary transition-colors font-medium" to="/products">Marketplace</Link>

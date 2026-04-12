@@ -44,7 +44,7 @@ const Profile = () => {
   const fetchAllProducts = async () => {
     setIsLoadingAdmin(true);
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/products');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
       const data = await response.json();
       if (response.ok) {
         setAllProducts(data);
@@ -79,7 +79,7 @@ const Profile = () => {
         imageBase64 = newProduct.image;
       }
 
-      const response = await fetch('http://127.0.0.1:5000/api/products', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +108,7 @@ const Profile = () => {
   const handleDeleteProduct = async (id) => {
     if (window.confirm('Voulez-vous supprimer ce produit du catalogue ?')) {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/products/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
           method: 'DELETE'
         });
         if (response.ok) {
@@ -123,7 +123,7 @@ const Profile = () => {
   const fetchWishlist = async () => {
     setIsLoadingWishlist(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/wishlist/${user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wishlist/${user.id}`);
       const data = await response.json();
       if (response.ok) {
         setWishlistItems(data);
@@ -137,7 +137,7 @@ const Profile = () => {
 
   const removeFromWishlist = async (productId) => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/wishlist', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wishlist`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, productId })
@@ -153,7 +153,7 @@ const Profile = () => {
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/orders/${user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/${user.id}`);
       const data = await response.json();
       if (response.ok) {
         setOrders(data);
@@ -168,7 +168,7 @@ const Profile = () => {
   const fetchAddresses = async () => {
     setIsLoadingAddresses(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/addresses/${user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/addresses/${user.id}`);
       const data = await response.json();
       if (response.ok) {
         setAddresses(data);
@@ -184,7 +184,7 @@ const Profile = () => {
     e.preventDefault();
     if (newAddress.name && newAddress.location) {
       try {
-        const response = await fetch('http://127.0.0.1:5000/api/addresses', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/addresses`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, ...newAddress })
@@ -204,7 +204,7 @@ const Profile = () => {
   const handleDeleteAddress = async (id) => {
     if (window.confirm('Voulez-vous vraiment supprimer cette adresse ?')) {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/addresses/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/addresses/${id}`, {
           method: 'DELETE'
         });
         if (response.ok) {
@@ -218,7 +218,7 @@ const Profile = () => {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/users/${user.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: `${firstName} ${lastName}`, phone })
@@ -237,47 +237,50 @@ const Profile = () => {
   }
 
   const getTabClass = (tabName) => {
+    const base = "flex items-center gap-3 px-6 py-4 transition-all duration-300 cursor-pointer whitespace-nowrap ";
     return activeTab === tabName
-      ? "flex items-center gap-3 px-6 py-3 text-[#32602c] font-bold bg-[#e3e3de] rounded-r-full hover:translate-x-1 transition-transform duration-200 cursor-pointer w-full text-left"
-      : "flex items-center gap-3 px-6 py-3 text-[#40493d] hover:bg-[#e8e8e3] hover:translate-x-1 transition-transform duration-200 rounded-r-full cursor-pointer w-full text-left";
+      ? base + "text-primary font-bold bg-primary/10 border-b-2 md:border-b-0 md:border-r-4 border-primary"
+      : base + "text-stone-500 hover:bg-stone-100 hover:text-stone-800";
   };
 
   return (
-    <div className="bg-[#fafaf5] text-[#1a1c19] min-h-screen font-body">
-      <div className="flex pt-[72px] w-full min-h-screen">
-        {/* Sidebar Navigation */}
-        <aside className="flex flex-col py-8 gap-4 h-[calc(100vh-72px)] w-64 border-r border-[#bfcaba]/15 bg-[#f4f4ef] sticky top-[72px]">
-          <div className="px-6 mb-4">
-            <h2 className="text-lg font-extrabold text-[#32602c] font-headline">{user?.name || "Utilisateur"}</h2>
-            <p className="text-xs text-[#40493d] font-medium">Member</p>
+    <div className="bg-surface text-on-surface min-h-screen font-body pb-32">
+      <div className="flex flex-col md:flex-row pt-[72px] w-full min-h-screen">
+        {/* Responsive Tab Navigation */}
+        <aside className="w-full md:w-64 bg-stone-50 dark:bg-stone-900/50 border-b md:border-b-0 md:border-r border-outline/10 md:h-[calc(100vh-72px)] md:sticky md:top-[72px] shrink-0">
+          <div className="hidden md:block p-8 border-b border-outline/10">
+            <h2 className="text-xl font-black text-primary tracking-tight font-headline">{user?.name || "Member"}</h2>
+            <p className="text-xs text-stone-400 font-bold uppercase tracking-widest mt-1">Verified Explorer</p>
           </div>
-          <nav className="flex flex-col gap-1 pr-4">
+          
+          <nav className="flex md:flex-col overflow-x-auto md:overflow-x-visible hide-scrollbar">
             <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}>
               <span className="material-symbols-outlined">person</span>
-              <span className="text-sm font-medium font-body">Profil</span>
+              <span>Account</span>
             </button>
             <button onClick={() => setActiveTab('orders')} className={getTabClass('orders')}>
               <span className="material-symbols-outlined">history</span>
-              <span className="text-sm font-medium font-body">Historique commandes</span>
+              <span>Orders</span>
             </button>
             <button onClick={() => setActiveTab('wishlist')} className={getTabClass('wishlist')}>
               <span className="material-symbols-outlined">favorite</span>
-              <span className="text-sm font-medium font-body">Liste d'Envies</span>
+              <span>Wishlist</span>
             </button>
             <button onClick={() => setActiveTab('settings')} className={getTabClass('settings')}>
               <span className="material-symbols-outlined">settings</span>
-              <span className="text-sm font-medium font-body">Paramètres</span>
+              <span>Settings</span>
             </button>
             <button onClick={() => setActiveTab('admin')} className={getTabClass('admin')}>
-              <span className="material-symbols-outlined text-red-600">admin_panel_settings</span>
-              <span className="text-sm font-bold font-body text-red-800">Administration</span>
+              <span className="material-symbols-outlined text-red-500">admin_panel_settings</span>
+              <span className="text-red-700">Admin</span>
             </button>
           </nav>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-8 lg:p-12 overflow-y-auto pb-24 md:pb-8">
-          <div className="max-w-4xl mx-auto space-y-16">
+        <main className="flex-1 p-6 md:p-12">
+          <div className="max-w-4xl mx-auto space-y-12">
+            {/* ... Content remains consistent but wrapped in descriptive headers ... */}
 
             {/* Tab: Profile */}
             {activeTab === 'profile' && (
@@ -654,27 +657,6 @@ const Profile = () => {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Component */}
-      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-[#fafaf5]/90 backdrop-blur-lg border-t border-[#bfcaba]/10 shadow-[0px_-12px_32px_rgba(26,28,25,0.04)]">
-        <div className="flex justify-around items-center h-20 px-4">
-          <div className="flex flex-col items-center justify-center text-[#636658] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">home</span>
-            <span className="font-label text-[10px] font-bold uppercase tracking-wider">Home</span>
-          </div>
-          <div className="flex flex-col items-center justify-center text-[#636658] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">storefront</span>
-            <span className="font-label text-[10px] font-bold uppercase tracking-wider">Market</span>
-          </div>
-          <div className="flex flex-col items-center justify-center text-[#636658] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">favorite</span>
-            <span className="font-label text-[10px] font-bold uppercase tracking-wider">Wishlist</span>
-          </div>
-          <div className="flex flex-col items-center justify-center bg-[#32602c] text-white rounded-xl px-6 py-1 active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">person</span>
-            <span className="font-label text-[10px] font-bold uppercase tracking-wider">Account</span>
-          </div>
-        </div>
-      </nav>
     </div>
   );
 };

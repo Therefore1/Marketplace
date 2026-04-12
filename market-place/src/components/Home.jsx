@@ -14,16 +14,16 @@ const Home = () => {
             <div className="absolute inset-0 bg-black/30"></div>
           </div>
           <div className="relative z-10 w-full max-w-4xl px-6 text-center">
-            <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 tracking-tight">Precision Earth Engineering.</h1>
-            <p className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto">Access the world's most sophisticated agricultural marketplace for high-yield farming.</p>
-            <div className="bg-white/10 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/20">
-              <div className="flex flex-col md:flex-row items-center gap-2">
+            <h1 className="text-4xl md:text-7xl font-extrabold text-white mb-4 md:mb-6 tracking-tight leading-tight">Precision Earth Engineering.</h1>
+            <p className="text-base md:text-xl text-white/90 mb-8 md:mb-10 max-w-2xl mx-auto px-2">Access the world's most sophisticated agricultural marketplace for high-yield farming.</p>
+            <div className="bg-white/10 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/20 mx-auto max-w-lg md:max-w-none">
+              <div className="flex flex-col md:flex-row items-center gap-2 p-1 md:p-0">
                 <div className="flex-1 w-full relative">
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">search</span>
-                  <input className="w-full pl-12 pr-4 py-4 bg-white rounded-xl border-none focus:ring-2 focus:ring-primary text-on-surface" placeholder="Search for seeds, equipment, or chemicals..." type="text" />
+                  <input className="w-full pl-12 pr-4 py-3 md:py-4 bg-white rounded-xl border-none focus:ring-2 focus:ring-primary text-on-surface text-sm md:text-base" placeholder="Search resources..." type="text" />
                 </div>
-                <button className="w-full md:w-auto px-10 py-4 bg-primary text-on-primary rounded-xl font-bold text-lg hover:scale-[1.02] active:scale-95 transition-all">
-                  Find Resources
+                <button className="w-full md:w-auto px-8 md:px-10 py-3 md:py-4 bg-primary text-on-primary rounded-xl font-bold text-base md:text-lg hover:scale-[1.02] active:scale-95 transition-all">
+                  Trouver
                 </button>
               </div>
             </div>
