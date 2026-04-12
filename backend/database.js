@@ -6,10 +6,23 @@ const isProd = process.env.DATABASE_URL;
 const dbUrl = isProd ? process.env.DATABASE_URL : `file:${path.resolve(__dirname, 'market.sqlite')}`;
 const authToken = process.env.DATABASE_AUTH_TOKEN;
 
-const client = createClient({
-  url: dbUrl,
-  authToken: authToken,
-});
+console.log('--- Database Connection Info ---');
+console.log(`Mode: ${isProd ? 'Production (Turso Cloud)' : 'Development (Local SQLite)'}`);
+console.log(`URL: ${dbUrl}`);
+if (isProd) {
+  console.log(`Auth Token: ${authToken ? 'Token present' : 'MISSING TOKEN'}`);
+}
+console.log('-------------------------------');
+
+let client;
+try {
+  client = createClient({
+    url: dbUrl,
+    authToken: authToken,
+  });
+} catch (error) {
+  console.error('Failed to create LibSQL client:', error);
+}
 
 // A wrapper to maintain compatibility with the existing sqlite3 callback-based API
 const db = {
@@ -75,9 +88,14 @@ const db = {
 };
 
 // Initialize tables
-const initDb = async () => {
-    try {
-        await db.execute(`CREATE TABLE IF NOT EXISTS products (
+const initDb = async function initDb() {
+  console.log('Initializing Database...');
+  try {
+    // Basic connectivity check
+    await client.execute('SELECT 1');
+    console.log('Database connection successful.');
+
+    await db.execute(`CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             category TEXT,
