@@ -52,13 +52,24 @@ const db = {
     
     // In production, use the direct Web API which we proved works
     if (isProd) {
+      // Turso's pipeline API expects arguments to be "Value" objects (type + value)
+      const mappedArgs = args.map(arg => {
+        if (typeof arg === 'number') return { type: 'integer', value: arg };
+        if (typeof arg === 'boolean') return { type: 'integer', value: arg ? 1 : 0 };
+        if (arg === null || arg === undefined) return { type: 'null' };
+        return { type: 'text', value: String(arg) };
+      });
+
       const response = await fetch(`${finalDbUrl}/v2/pipeline`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql, args } }] })
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql, args: mappedArgs } }] })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Database request failed');
+      if (!response.ok) {
+        console.error('Turso pipeline error:', data);
+        throw new Error(data.error || 'Database request failed');
+      }
       
       // Transform the Turso pipeline response back to the format the app expects
       const result = data.results[0].response.result;
