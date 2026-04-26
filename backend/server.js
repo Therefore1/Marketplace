@@ -206,7 +206,8 @@ app.put('/api/products/:id', (req, res) => {
 // Delete a product (Admin)
 app.delete('/api/products/:id', (req, res) => {
     const { id } = req.params;
-    db.run('DELETE FROM products WHERE id = ?', [id], function(err) {
+    const finalId = isNaN(id) ? id : parseInt(id);
+    db.run('DELETE FROM products WHERE id = ?', [finalId], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });

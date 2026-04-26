@@ -83,11 +83,25 @@ const db = {
         throw new Error(data.error || 'Database request failed');
       }
       
-      // Transform the Turso pipeline response back to the format the app expects
-      const result = data.results[0].response.result;
+      const firstResult = data.results && data.results[0];
+      if (!firstResult) {
+        throw new Error('Empty Turso pipeline response');
+      }
+      if (firstResult.type === 'error') {
+        console.error('Turso statement error:', firstResult.error);
+        throw new Error(firstResult.error.message || 'Turso statement execution failed');
+      }
+      
+      const result = firstResult.response.result;
+      if (!result) {
+        throw new Error('Missing result in Turso pipeline response');
+      }
+      
       const rows = (result.rows || []).map(row => {
         const obj = {};
-        result.cols.forEach((col, i) => obj[col.name] = row[i].value);
+        if (result.cols) {
+          result.cols.forEach((col, i) => obj[col.name] = row[i] ? row[i].value : null);
+        }
         return obj;
       });
 
