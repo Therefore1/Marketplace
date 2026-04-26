@@ -207,10 +207,23 @@ app.put('/api/products/:id', (req, res) => {
 app.delete('/api/products/:id', (req, res) => {
     const { id } = req.params;
     const finalId = isNaN(id) ? id : parseInt(id);
-    db.run('DELETE FROM products WHERE id = ?', [finalId], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true });
-    });
+    
+    db.run('DELETE FROM cart WHERE product_id = ?', [finalId], (err) => {
+        if (err) console.error('Cart delete error:', err);
+        
+        db.run('DELETE FROM wishlist WHERE product_id = ?', [finalId], (err) => {
+            if (err) console.error('Wishlist delete error:', err);
+            
+            db.run('DELETE FROM order_items WHERE product_id = ?', [finalId], (err) => {
+                if (err) console.error('Order items delete error:', err);
+                
+                db.run('DELETE FROM products WHERE id = ?', [finalId], function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ success: true });
+                });
+            });
+        });
+});
 });
 
 
