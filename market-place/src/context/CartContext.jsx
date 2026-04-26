@@ -14,7 +14,8 @@ export const CartProvider = ({ children }) => {
         if (!isLoggedIn || !user?.id) return;
         setIsLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${user.id}`);
+            const timestamp = new Date().getTime();
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${user.id}?t=${timestamp}`);
             const data = await response.json();
             if (response.ok) {
                 setCartItems(data);
@@ -36,18 +37,38 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = async (productId, quantity = 1) => {
         if (!isLoggedIn || !user?.id) return false;
+        
+        // OPTIMISTIC UPDATE: Update UI immediately
+        // We find if the product exists in the current items
+        const existingItemIndex = cartItems.findIndex(item => item.id === productId || item.product_id === productId);
+        
+        if (existingItemIndex > -1) {
+            const newItems = [...cartItems];
+            newItems[existingItemIndex] = { 
+                ...newItems[existingItemIndex], 
+                quantity: (Number(newItems[existingItemIndex].quantity) || 0) + quantity 
+            };
+            setCartItems(newItems);
+        } else {
+            // Add a temporary item to show the count change
+            setCartItems(prev => [...prev, { id: productId, product_id: productId, quantity: quantity }]);
+        }
+
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/cart`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, productId, quantity })
             });
             if (response.ok) {
+                // Background refresh to get the real product data (images, names) linked to the ID
                 await fetchCart();
                 return true;
             }
         } catch (err) {
             console.error('Error adding to cart:', err);
+            // Revert on error
+            fetchCart();
         }
         return false;
     };
@@ -106,12 +127,17 @@ export const CartProvider = ({ children }) => {
             removeFromCart, 
             clearCart,
             fetchCart,
-            cartCount: cartItems.reduce((acc, item) => acc + item.quantity, 0),
+            cartCount: cartItems.reduce((acc, item) => acc + (Number(item.quantity) || 0), 0),
             cartTotal: cartItems.reduce((acc, item) => {
-                const price = typeof item.price === 'string' 
-                    ? parseInt(item.price.replace(/[^0-9]/g, '')) 
-                    : item.numericPrice;
-                return acc + (price * item.quantity);
+                let priceNum = 0;
+                if (typeof item.price === 'string') {
+                    priceNum = parseInt(item.price.replace(/[^0-9]/g, '')) || 0;
+                } else if (item.numericPrice) {
+                    priceNum = Number(item.numericPrice);
+                } else {
+                    priceNum = item.price || 0;
+                }
+                return acc + (priceNum * (Number(item.quantity) || 0));
             }, 0)
         }}>
             {children}

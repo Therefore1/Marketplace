@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const WmoIcons = {
   0: 'clear_day',
@@ -20,6 +21,7 @@ const WmoIcons = {
 };
 
 const WeatherWidget = () => {
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForecast, setShowForecast] = useState(false);
@@ -46,10 +48,10 @@ const WeatherWidget = () => {
           fetchWeather(lat, lon);
           
           try {
-             const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+             const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${i18n.language}`);
              if (geoRes.ok) {
                  const geoData = await geoRes.json();
-                 setLocationName(geoData.city || geoData.locality || "Your Location");
+                 setLocationName(geoData.city || geoData.locality || t('your_position'));
              }
           } catch(e) {}
         },
@@ -62,7 +64,7 @@ const WeatherWidget = () => {
       fetchWeather(36.7783, -119.4179);
       setLocationName("Green Valley Farm, CA");
     }
-  }, []);
+  }, [i18n.language]);
 
   if (loading || !data) {
     return (
@@ -79,7 +81,7 @@ const WeatherWidget = () => {
     <div className="bg-surface-container-highest p-8 rounded-xl shadow-sm transition-all duration-300">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-xl font-bold text-on-surface">Local Conditions</h3>
+          <h3 className="text-xl font-bold text-on-surface">{t('weather_title')}</h3>
           <p className="text-sm text-on-surface-variant flex items-center gap-1">
             <span className="material-symbols-outlined text-[16px]">location_on</span>
             {locationName}
@@ -92,21 +94,21 @@ const WeatherWidget = () => {
         <div className="flex items-center justify-between p-4 bg-surface rounded-lg hover:bg-surface-container-low transition-colors cursor-default">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-stone-500">device_thermostat</span>
-            <span className="text-sm font-medium">Temperature</span>
+            <span className="text-sm font-medium">{t('temperature')}</span>
           </div>
           <span className="text-lg font-bold">{current?.temperature_2m}&deg;C</span>
         </div>
         <div className="flex items-center justify-between p-4 bg-surface rounded-lg hover:bg-surface-container-low transition-colors cursor-default">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-stone-500">water_drop</span>
-            <span className="text-sm font-medium">Rainfall</span>
+            <span className="text-sm font-medium">{t('rainfall')}</span>
           </div>
           <span className="text-lg font-bold">{current?.precipitation}mm</span>
         </div>
         <div className="flex items-center justify-between p-4 bg-surface rounded-lg hover:bg-surface-container-low transition-colors cursor-default">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-stone-500">humidity_percentage</span>
-            <span className="text-sm font-medium">Humidity</span>
+            <span className="text-sm font-medium">{t('humidity')}</span>
           </div>
           <span className="text-lg font-bold">{current?.relative_humidity_2m}%</span>
         </div>
@@ -114,11 +116,11 @@ const WeatherWidget = () => {
       
       {showForecast && daily && (
         <div className="mt-6 pt-6 border-t border-stone-300 dark:border-stone-700">
-          <h4 className="font-bold text-sm mb-4 text-on-surface-variant">5-Day Forecast</h4>
+          <h4 className="font-bold text-sm mb-4 text-on-surface-variant">{t('forecast_5day')}</h4>
           <div className="space-y-3">
             {daily.time.slice(1, 6).map((timeStr, index) => {
               const d = new Date(timeStr);
-              const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+              const dayName = d.toLocaleDateString(i18n.language, { weekday: 'short' });
               const wIcon = WmoIcons[daily.weather_code[index + 1]] || 'cloud';
               const maxT = Math.round(daily.temperature_2m_max[index + 1]);
               const minT = Math.round(daily.temperature_2m_min[index + 1]);
@@ -141,7 +143,7 @@ const WeatherWidget = () => {
         onClick={() => setShowForecast(!showForecast)}
         className="w-full mt-8 py-3 bg-secondary-container hover:bg-surface-variant text-on-secondary-container rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 active:scale-95"
       >
-        {showForecast ? 'Hide Forecast' : 'View Full Forecast'}
+        {showForecast ? t('hide_forecast') : t('view_forecast')}
         <span className="material-symbols-outlined text-[20px]">
           {showForecast ? 'expand_less' : 'expand_more'}
         </span>

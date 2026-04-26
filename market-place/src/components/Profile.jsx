@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Profile = () => {
+  const { t, i18n } = useTranslation();
   const { isLoggedIn, user, login } = useAuth();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'profile');
@@ -26,10 +28,12 @@ const Profile = () => {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
+  const [allRentals, setAllRentals] = useState([]);
+  const [activeAdminTab, setActiveAdminTab] = useState('products');
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [adminFeedback, setAdminFeedback] = useState({ message: '', type: '' });
-  const [newProduct, setNewProduct] = useState({ name: "", category: "Semences", price: "", image: null });
+  const [newProduct, setNewProduct] = useState({ name: "", category: "Semences", price: "", description: "", images: [], is_rental: false, rental_period: [], rental_prices: { Jour: "", Semaine: "", Mois: "" } });
 
   // Load addresses, orders and wishlist on mount
   useEffect(() => {
@@ -44,13 +48,16 @@ const Profile = () => {
   const fetchAllProducts = async () => {
     setIsLoadingAdmin(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
-      const data = await response.json();
-      if (response.ok) {
-        setAllProducts(data);
-      }
+      const [productsRes, rentalsRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/api/products`),
+        fetch(`${import.meta.env.VITE_API_URL}/api/rentals`)
+      ]);
+      const productsData = await productsRes.json();
+      const rentalsData = await rentalsRes.json();
+      if (productsRes.ok) setAllProducts(productsData);
+      if (rentalsRes.ok) setAllRentals(rentalsData);
     } catch (err) {
-      console.error('Error fetching all products:', err);
+      console.error('Error fetching admin data:', err);
     } finally {
       setIsLoadingAdmin(false);
     }
@@ -73,26 +80,55 @@ const Profile = () => {
 
     try {
       let imageBase64 = "";
-      if (newProduct.image && typeof newProduct.image !== 'string') {
-        imageBase64 = await fileToBase64(newProduct.image);
-      } else {
-        imageBase64 = newProduct.image;
+      let galleryBase64 = [];
+
+      if (newProduct.images && newProduct.images.length > 0) {
+        // First image is main
+        const mainFile = newProduct.images[0];
+        imageBase64 = typeof mainFile === 'string' ? mainFile : await fileToBase64(mainFile);
+
+        // Others are gallery
+        if (newProduct.images.length > 1) {
+          galleryBase64 = await Promise.all(
+            newProduct.images.slice(1).map(file => typeof file === 'string' ? file : fileToBase64(file))
+          );
+        }
+      }
+
+      const payload = {
+        ...newProduct,
+        image: imageBase64,
+        images_gallery: galleryBase64
+      };
+      
+      if (newProduct.is_rental) {
+          if (Array.isArray(newProduct.rental_period)) {
+              payload.rental_period = newProduct.rental_period.join(', ');
+              if (newProduct.rental_period.length > 0) {
+                  const firstPeriod = newProduct.rental_period[0];
+                  payload.price = `${newProduct.rental_prices[firstPeriod]} DH / ${firstPeriod}`;
+              } else {
+                  payload.price = 'Sur demande';
+              }
+          }
+          payload.rental_prices = newProduct.rental_prices;
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newProduct,
-          image: imageBase64
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
       if (response.ok) {
-        setAllProducts([data, ...allProducts]);
-        setNewProduct({ name: "", category: "Semences", price: "", image: null });
-        setAdminFeedback({ message: 'Produit ajouté au catalogue avec succès !', type: 'success' });
+        if (newProduct.is_rental) {
+            setAllRentals([data, ...allRentals]);
+        } else {
+            setAllProducts([data, ...allProducts]);
+        }
+        setNewProduct({ name: "", category: newProduct.is_rental ? "Tracteurs" : "Semences", price: "", description: "", images: [], is_rental: newProduct.is_rental, rental_period: [], rental_prices: { Jour: "", Semaine: "", Mois: "" } });
+        setAdminFeedback({ message: i18n.language === 'ar' ? 'تم إضافة المنتج بنجاح!' : 'Produit ajouté au catalogue avec succès !', type: 'success' });
         setTimeout(() => setAdminFeedback({ message: '', type: '' }), 3000);
       } else {
         setAdminFeedback({ message: `Erreur: ${data.error || 'Impossible d\'ajouter le produit'}`, type: 'error' });
@@ -105,14 +141,18 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteProduct = async (id) => {
+  const handleDeleteProduct = async (id, isRental) => {
     if (window.confirm('Voulez-vous supprimer ce produit du catalogue ?')) {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
           method: 'DELETE'
         });
         if (response.ok) {
-          setAllProducts(allProducts.filter(p => p.id !== id));
+          if (isRental) {
+             setAllRentals(allRentals.filter(p => p.id !== id));
+          } else {
+             setAllProducts(allProducts.filter(p => p.id !== id));
+          }
         }
       } catch (err) {
         console.error('Error deleting product:', err);
@@ -256,23 +296,19 @@ const Profile = () => {
           <nav className="flex md:flex-col overflow-x-auto md:overflow-x-visible hide-scrollbar">
             <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}>
               <span className="material-symbols-outlined">person</span>
-              <span>Account</span>
+              <span>{t('account')}</span>
             </button>
             <button onClick={() => setActiveTab('orders')} className={getTabClass('orders')}>
               <span className="material-symbols-outlined">history</span>
-              <span>Orders</span>
+              <span>{t('order_history')}</span>
             </button>
             <button onClick={() => setActiveTab('wishlist')} className={getTabClass('wishlist')}>
               <span className="material-symbols-outlined">favorite</span>
-              <span>Wishlist</span>
+              <span>{t('wishlist')}</span>
             </button>
             <button onClick={() => setActiveTab('settings')} className={getTabClass('settings')}>
               <span className="material-symbols-outlined">settings</span>
-              <span>Settings</span>
-            </button>
-            <button onClick={() => setActiveTab('admin')} className={getTabClass('admin')}>
-              <span className="material-symbols-outlined text-red-500">admin_panel_settings</span>
-              <span className="text-red-700">Admin</span>
+              <span>{t('settings')}</span>
             </button>
           </nav>
         </aside>
@@ -287,16 +323,16 @@ const Profile = () => {
               <>
                 <section className="space-y-8" id="personal-infos">
                   <div className="flex justify-between items-end border-b border-[#bfcaba]/15 pb-4">
-                    <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">Profil</h3>
+                    <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">{t('personal_info')}</h3>
                     {isEditing ? (
-                      <span onClick={handleSave} className="text-[#32602c] font-bold text-sm cursor-pointer hover:underline bg-[#e3e3de] px-3 py-1.5 rounded-lg border border-[#32602c]/20">Enregistrer</span>
+                      <span onClick={handleSave} className="text-[#32602c] font-bold text-sm cursor-pointer hover:underline bg-[#e3e3de] px-3 py-1.5 rounded-lg border border-[#32602c]/20">{t('save_button') || 'Enregistrer'}</span>
                     ) : (
-                      <span onClick={() => setIsEditing(true)} className="text-[#32602c] font-bold text-sm cursor-pointer hover:underline">Modifier</span>
+                      <span onClick={() => setIsEditing(true)} className="text-[#32602c] font-bold text-sm cursor-pointer hover:underline">{t('edit_button') || 'Modifier'}</span>
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">Prénom</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">{t('firstName') || 'Prénom'}</label>
                       <input
                         className={`w-full bg-[#e8e8e3] border-none rounded-xl px-4 py-3 text-[#1a1c19] outline-none ${isEditing ? 'focus:ring-2 focus:ring-[#32602c] ring-1 ring-[#bfcaba]' : 'opacity-80 cursor-not-allowed'}`}
                         readOnly={!isEditing}
@@ -306,7 +342,7 @@ const Profile = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">Nom</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">{t('lastName') || 'Nom'}</label>
                       <input
                         className={`w-full bg-[#e8e8e3] border-none rounded-xl px-4 py-3 text-[#1a1c19] outline-none ${isEditing ? 'focus:ring-2 focus:ring-[#32602c] ring-1 ring-[#bfcaba]' : 'opacity-80 cursor-not-allowed'}`}
                         readOnly={!isEditing}
@@ -316,7 +352,7 @@ const Profile = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">Email</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">{t('email') || 'Email'}</label>
                       <input
                         className="w-full bg-[#e8e8e3] border-none rounded-xl px-4 py-3 text-[#1a1c19] outline-none opacity-60 cursor-not-allowed"
                         readOnly
@@ -325,7 +361,7 @@ const Profile = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">Téléphone</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#40493d]">{t('phone') || 'Téléphone'}</label>
                       <input
                         className={`w-full bg-[#e8e8e3] border-none rounded-xl px-4 py-3 text-[#1a1c19] outline-none ${isEditing ? 'focus:ring-2 focus:ring-[#32602c] ring-1 ring-[#bfcaba]' : 'opacity-80 cursor-not-allowed'}`}
                         readOnly={!isEditing}
@@ -338,39 +374,39 @@ const Profile = () => {
                 </section>
 
                 <section className="space-y-8" id="addresses">
-                  <h3 className="text-2xl font-extrabold text-[#1a1c19] font-headline tracking-tight">Mes Adresses</h3>
+                  <h3 className="text-2xl font-extrabold text-[#1a1c19] font-headline tracking-tight">{t('my_addresses')}</h3>
 
                   {isAddingAddress ? (
                     <form onSubmit={handleAddAddress} className="bg-[#f4f4ef] rounded-xl p-6 border border-[#bfcaba]/30 space-y-4">
-                      <h4 className="font-bold text-[#32602c] mb-4">Nouvelle Parcelle / Adresse</h4>
+                      <h4 className="font-bold text-[#32602c] mb-4">{t('add_parcel')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase text-[#40493d]">Nom (ex: Ferme Horizon)</label>
+                          <label className="text-xs font-bold uppercase text-[#40493d]">{t('farm_name')}</label>
                           <input required value={newAddress.name} onChange={e => setNewAddress({ ...newAddress, name: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase text-[#40493d]">Adresse complète</label>
+                          <label className="text-xs font-bold uppercase text-[#40493d]">{t('shipping_address')}</label>
                           <input required value={newAddress.location} onChange={e => setNewAddress({ ...newAddress, location: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase text-[#40493d]">Nombre de zones</label>
-                          <input value={newAddress.zones} onChange={e => setNewAddress({ ...newAddress, zones: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" placeholder="ex: 12" />
+                          <label className="text-xs font-bold uppercase text-[#40493d]">{t('zones_num') || 'Zones'}</label>
+                          <input value={newAddress.zones} onChange={e => setNewAddress({ ...newAddress, zones: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold uppercase text-[#40493d]">Superficie totale</label>
-                          <input value={newAddress.surface} onChange={e => setNewAddress({ ...newAddress, surface: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" placeholder="ex: 85 Hectares" />
+                          <label className="text-xs font-bold uppercase text-[#40493d]">{t('surface') || 'Surface'}</label>
+                          <input value={newAddress.surface} onChange={e => setNewAddress({ ...newAddress, surface: e.target.value })} className="w-full bg-[#e8e8e3] rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-[#32602c]" type="text" />
                         </div>
                       </div>
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="bg-[#32602c] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-[#254720]">Sauvegarder</button>
-                        <button type="button" onClick={() => setIsAddingAddress(false)} className="bg-[#e8e8e3] text-[#40493d] px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#d5d5d0]">Annuler</button>
+                        <button type="submit" className="bg-[#32602c] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-[#254720]">{t('confirm_order') === 'تأكيد الطلب' ? 'حفظ' : 'Sauvegarder'}</button>
+                        <button type="button" onClick={() => setIsAddingAddress(false)} className="bg-[#e8e8e3] text-[#40493d] px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#d5d5d0]">{t('back_to_list') === 'العودة إلى القائمة' ? 'إلغاء' : 'Annuler'}</button>
                       </div>
                     </form>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {isLoadingAddresses ? (
                         <div className="lg:col-span-3 text-center py-12">
-                          <p className="text-[#40493d] font-bold">Chargement des adresses...</p>
+                          <p className="text-[#40493d] font-bold">{t('loading_details')}</p>
                         </div>
                       ) : (
                         <>
@@ -378,34 +414,34 @@ const Profile = () => {
                             <div key={addr.id} className="lg:col-span-2 bg-[#f4f4ef] rounded-xl p-6 relative overflow-hidden group border border-[#bfcaba]/30">
                               <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-4">
-                                  {idx === 0 && <span className="bg-[#32602c] text-[#ffffff] text-[10px] font-bold px-2 py-1 rounded inline-block uppercase">Principal</span>}
+                                  {idx === 0 && <span className="bg-[#32602c] text-[#ffffff] text-[10px] font-bold px-2 py-1 rounded inline-block uppercase">{t('primary')}</span>}
                                   {!idx === 0 && <span></span>}
                                   <button onClick={() => handleDeleteAddress(addr.id)} className="material-symbols-outlined text-red-600 hover:text-red-800 transition-colors p-1 bg-white/50 rounded-full">delete</button>
                                 </div>
                                 <h4 className="text-xl font-bold text-[#32602c] mb-1">{addr.name}</h4>
                                 <p className="text-[#40493d] text-sm mb-4">{addr.location}</p>
+                              </div>
                                 <div className="flex gap-4">
                                   <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-[#40493d] uppercase">Parcelles</span>
+                                    <span className="text-[10px] font-bold text-[#40493d] uppercase">{i18n.language === 'ar' ? 'قطع أراضي' : 'Parcelles'}</span>
                                     <span className="text-lg font-bold text-[#1a1c19]">{addr.zones || '-'}</span>
                                   </div>
                                   <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-[#40493d] uppercase">Superficie</span>
+                                    <span className="text-[10px] font-bold text-[#40493d] uppercase">{i18n.language === 'ar' ? 'المساحة' : 'Superficie'}</span>
                                     <span className="text-lg font-bold text-[#1a1c19]">{addr.surface || '-'}</span>
                                   </div>
                                 </div>
+                                <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 grayscale group-hover:grayscale-0 transition-all duration-500">
+                                  <img alt="Aerial farm view" className="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mveaPQVsPKcBRtgOAN_ImGcLvH3bUnKqpm3nmNc5JYsAH6x-_9-01IMlbp09kUIz7eiN6uQQ0o1d_essb9L5GiRFq2bhZiOkR67JQxRNoarsY8PaS3cBQb_O-Q9Y5PGEj-qwC2ZFVNBqYTinwaBMIln-mzdylAgYvX8wi9jzET9ORSb6K0UiXX8eAimaYmz3ysMyHiQFwqs97kzty3nRxava1H6JYbusubq0gnD7XP8XgoC5rs830NkTwE-NuNKrSHsAu_SQVCs" />
+                                </div>
                               </div>
-                              <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 grayscale group-hover:grayscale-0 transition-all duration-500">
-                                <img alt="Aerial farm view" className="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mveaPQVsPKcBRtgOAN_ImGcLvH3bUnKqpm3nmNc5JYsAH6x-_9-01IMlbp09kUIz7eiN6uQQ0o1d_essb9L5GiRFq2bhZiOkR67JQxRNoarsY8PaS3cBQb_O-Q9Y5PGEj-qwC2ZFVNBqYTinwaBMIln-mzdylAgYvX8wi9jzET9ORSb6K0UiXX8eAimaYmz3ysMyHiQFwqs97kzty3nRxava1H6JYbusubq0gnD7XP8XgoC5rs830NkTwE-NuNKrSHsAu_SQVCs" />
-                              </div>
-                            </div>
-                          ))}
+                            ))}
                         </>
                       )}
 
                       <div onClick={() => setIsAddingAddress(true)} className="bg-[#e3e3de] rounded-xl p-6 flex flex-col justify-center items-center border-2 border-dashed border-[#bfcaba]/60 hover:border-[#32602c]/50 transition-colors cursor-pointer min-h-[200px]">
                         <span className="material-symbols-outlined text-[#32602c] text-4xl mb-2">add_location</span>
-                        <span className="font-bold text-sm text-[#40493d]">Ajouter une parcelle</span>
+                        <span className="font-bold text-sm text-[#40493d]">{t('add_parcel')}</span>
                       </div>
                     </div>
                   )}
@@ -417,27 +453,27 @@ const Profile = () => {
             {activeTab === 'orders' && (
               <section className="space-y-8" id="orders">
                 <div className="flex justify-between items-end border-b border-[#bfcaba]/15 pb-4">
-                  <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">Historique commandes</h3>
+                  <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">{t('orders_history')}</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-separate border-spacing-y-3">
                     <thead>
                       <tr className="text-[10px] font-bold uppercase tracking-widest text-[#40493d]">
-                        <th className="px-6 py-2">ID Commande</th>
+                        <th className="px-6 py-2">{t('order_id')}</th>
                         <th className="px-6 py-2">Date</th>
-                        <th className="px-6 py-2">Montant</th>
-                        <th className="px-6 py-2">Statut</th>
-                        <th className="px-6 py-2">Action</th>
+                        <th className="px-6 py-2">{t('summary')}</th>
+                        <th className="px-6 py-2">{t('status')}</th>
+                        <th className="px-6 py-2">{t('action')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {isLoadingOrders ? (
                         <tr>
-                          <td colSpan="5" className="text-center py-8 text-stone-500 font-bold">Chargement de vos commandes...</td>
+                          <td colSpan="5" className="text-center py-8 text-stone-500 font-bold">{t('loading_details')}</td>
                         </tr>
                       ) : orders.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="text-center py-8 text-stone-500 font-bold">Vous n'avez pas encore passé de commande.</td>
+                          <td colSpan="5" className="text-center py-8 text-stone-500 font-bold">{t('no_orders_found')}</td>
                         </tr>
                       ) : (
                         orders.map((order) => (
@@ -502,13 +538,13 @@ const Profile = () => {
             {activeTab === 'settings' && (
               <section className="space-y-8 pb-12" id="settings">
                 <div className="flex justify-between items-end border-b border-[#bfcaba]/15 pb-4">
-                  <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">Paramètres</h3>
+                  <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">{t('settings')}</h3>
                 </div>
                 <div className="bg-[#f4f4ef] rounded-2xl p-8 space-y-6 border border-[#bfcaba]/30">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <h4 className="font-bold text-[#1a1c19]">Notifications push</h4>
-                      <p className="text-sm text-[#40493d]">Alertes sur les prix du marché et l'état des sols.</p>
+                      <h4 className="font-bold text-[#1a1c19]">{t('notifications_push')}</h4>
+                      <p className="text-sm text-[#40493d]">{i18n.language === 'ar' ? 'تنبيهات حول أسعار السوق وحالة التربة.' : 'Alertes sur les prix du marché et l\'état des sols.'}</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input defaultChecked className="sr-only peer" type="checkbox" />
@@ -517,8 +553,8 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <h4 className="font-bold text-[#1a1c19]">Alertes SMS</h4>
-                      <p className="text-sm text-[#40493d]">Résumé hebdomadaire de l'activité.</p>
+                      <h4 className="font-bold text-[#1a1c19]">{t('sms_alerts')}</h4>
+                      <p className="text-sm text-[#40493d]">{i18n.language === 'ar' ? 'ملخص أسبوعي للنشاط.' : 'Résumé hebdomadaire de l\'activité.'}</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input className="sr-only peer" type="checkbox" />
@@ -527,13 +563,13 @@ const Profile = () => {
                   </div>
                   <div className="pt-4 border-t border-[#bfcaba]/15 flex items-center justify-between">
                     <div className="space-y-1">
-                      <h4 className="font-bold text-[#1a1c19]">Langue du compte</h4>
-                      <p className="text-sm text-[#40493d]">Préférence d'affichage de l'interface.</p>
+                      <h4 className="font-bold text-[#1a1c19]">{t('account_language')}</h4>
+                      <p className="text-sm text-[#40493d]">{i18n.language === 'ar' ? 'تفضيل عرض واجهة المستخدم.' : 'Préférence d\'affichage de l\'interface.'}</p>
                     </div>
-                    <select className="bg-[#e8e8e3] border-none rounded-lg text-sm font-bold text-[#32602c] focus:ring-[#32602c] py-2 pl-4 pr-10 outline-none">
-                      <option value="fr">Français (FR)</option>
-                      <option value="en">English (US)</option>
-                    </select>
+                    <div className="flex gap-2">
+                       <button onClick={() => i18n.changeLanguage('fr')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${i18n.language === 'fr' ? 'bg-[#32602c] text-white' : 'bg-[#e8e8e3] text-[#40493d]'}`}>Français</button>
+                       <button onClick={() => i18n.changeLanguage('ar')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${i18n.language === 'ar' ? 'bg-[#32602c] text-white' : 'bg-[#e8e8e3] text-[#40493d]'}`}>العربية</button>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -544,8 +580,8 @@ const Profile = () => {
               <section className="space-y-12 pb-24" id="admin">
                 <div className="flex justify-between items-end border-b border-red-200/50 pb-4">
                   <div>
-                    <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">Administration</h3>
-                    <p className="text-xs text-red-600 font-bold uppercase tracking-widest mt-1">Gestion du catalogue</p>
+                    <h3 className="text-3xl font-extrabold text-[#1a1c19] font-headline tracking-tight">{t('administration')}</h3>
+                    <p className="text-xs text-red-600 font-bold uppercase tracking-widest mt-1">{i18n.language === 'ar' ? 'إدارة الدليل' : 'Gestion du catalogue'}</p>
                   </div>
                 </div>
 
@@ -553,39 +589,153 @@ const Profile = () => {
                 <div className="bg-white dark:bg-stone-900 rounded-2xl p-8 border border-[#bfcaba]/30 shadow-sm">
                   <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">add_circle</span>
-                    Ajouter un nouveau produit
+                    {t('add_new_product')}
                   </h4>
                   <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase text-[#40493d]">Nom du produit</label>
-                      <input required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent" type="text" placeholder="ex: Tracteur John Deere" />
+                    <div className="md:col-span-2 flex items-center gap-3 bg-surface-container-low p-4 rounded-xl border border-outline-variant">
+                      <label className="text-sm font-bold text-[#40493d]">{t('product_type')}</label>
+                      <button type="button" onClick={() => setNewProduct({...newProduct, is_rental: false, category: "Semences"})} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${!newProduct.is_rental ? 'bg-primary text-white' : 'bg-surface text-stone-500 hover:bg-stone-50'}`}>{t('product_standard')}</button>
+                      <button type="button" onClick={() => setNewProduct({...newProduct, is_rental: true, category: "Tracteurs"})} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${newProduct.is_rental ? 'bg-[#32602c] text-white' : 'bg-surface text-stone-500 hover:bg-stone-50'}`}>{t('rental_machine_admin')}</button>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase text-[#40493d]">Catégorie</label>
+                      <label className="text-xs font-bold uppercase text-[#40493d]">{i18n.language === 'ar' ? 'الاسم' : 'Nom'}</label>
+                      <input required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent" type="text" placeholder={i18n.language === 'ar' ? 'أدخل اسم المنتج...' : 'Saisissez le nom du produit...'} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-[#40493d]">{i18n.language === 'ar' ? 'الفئة' : 'Catégorie'}</label>
                       <select required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent appearance-none">
-                        <option>Plantes</option>
-                        <option>Semences</option>
-                        <option>Engrais</option>
-                        <option>Matériel</option>
-                        <option>Phytosanitaires</option>
-                        <option>Capteurs IoT</option>
+                        {newProduct.is_rental ? (
+                            <>
+                                <option value="Tracteurs">{t('cat_tractors')}</option>
+                                <option value="Moissonneuses">{t('cat_harvesters')}</option>
+                                <option value="Excavatrices">{t('cat_excavators')}</option>
+                                <option value="Matériel de Transport">{t('cat_transport')}</option>
+                            </>
+                        ) : (
+                            <>
+                                <option value="Plantes">{t('cat_plants')}</option>
+                                <option value="Semences">{t('cat_seeds')}</option>
+                                <option value="Engrais">{t('cat_fertilizers')}</option>
+                                <option value="Matériel">{t('cat_equipment')}</option>
+                                <option value="Phytosanitaires">{t('cat_phytosanitary')}</option>
+                                <option value="Capteurs IoT">{t('cat_iot')}</option>
+                            </>
+                        )}
                       </select>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase text-[#40493d]">Prix (format: 0 000 DH)</label>
-                      <input required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent" type="text" placeholder="ex: 12 500 DH" />
+
+                    {newProduct.is_rental && (
+                      <div className="space-y-4 md:col-span-2">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase text-[#40493d]">Périodes de location possibles</label>
+                          <div className="flex gap-4">
+                            {['Jour', 'Semaine', 'Mois'].map(period => (
+                              <label key={period} className="flex items-center gap-2 cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                  checked={newProduct.rental_period?.includes(period) || false}
+                                  onChange={(e) => {
+                                    const current = newProduct.rental_period || [];
+                                    if (e.target.checked) {
+                                      setNewProduct({ ...newProduct, rental_period: [...current, period] });
+                                    } else {
+                                      setNewProduct({ ...newProduct, rental_period: current.filter(p => p !== period) });
+                                    }
+                                  }}
+                                />
+                                <span className="text-sm font-medium text-stone-700">{period}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {newProduct.rental_period && newProduct.rental_period.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                            {newProduct.rental_period.map(period => (
+                              <div key={`price-${period}`} className="space-y-1">
+                                <label className="text-xs font-bold uppercase text-[#40493d]">Tarif par {period} (MAD) *</label>
+                                <input 
+                                  required 
+                                  value={newProduct.rental_prices[period] || ''} 
+                                  onChange={e => setNewProduct({
+                                    ...newProduct, 
+                                    rental_prices: { ...newProduct.rental_prices, [period]: e.target.value } 
+                                  })} 
+                                  className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent" 
+                                  type="text" 
+                                  placeholder={`ex: ${period === 'Jour' ? '450' : period === 'Semaine' ? '2500' : '9000'}`} 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!newProduct.is_rental && (
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold uppercase text-[#40493d]">Prix</label>
+                        <input required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent" type="text" placeholder={`ex: 12 500 ${t('currency')}`} />
+                      </div>
+                    )}
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-bold uppercase text-[#40493d]">{i18n.language === 'ar' ? 'الوصف' : 'Description'}</label>
+                      <textarea required value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent min-h-[80px]" placeholder={i18n.language === 'ar' ? 'أدخل وصفاً للمنتج...' : 'Brève description du produit...'} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold uppercase text-[#40493d]">Image du produit</label>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-bold uppercase text-[#40493d]">Photos du produit (Cliquez plusieurs fois pour en ajouter d'autres)</label>
                       <div className="relative">
                         <input 
-                          required 
-                          onChange={e => setNewProduct({...newProduct, image: e.target.files[0]})} 
+                          onChange={e => {
+                            const files = Array.from(e.target.files);
+                            setNewProduct({
+                              ...newProduct, 
+                              images: [...newProduct.images, ...files]
+                            });
+                            e.target.value = ''; // Reset input to allow adding same file again if needed
+                          }} 
                           className="w-full bg-[#f4f4ef] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary border border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" 
                           type="file" 
                           accept="image/*"
+                          multiple
                         />
                       </div>
+                      
+                      {newProduct.images && newProduct.images.length > 0 && (
+                        <div className="flex flex-wrap gap-4 mt-6">
+                          {newProduct.images.map((file, idx) => (
+                            <div key={idx} className={`relative w-28 h-28 rounded-2xl overflow-hidden border-2 group transition-all ${idx === 0 ? 'border-primary shadow-lg scale-105' : 'border-stone-100'}`}>
+                              <img 
+                                src={typeof file === 'string' ? file : URL.createObjectURL(file)} 
+                                className="w-full h-full object-cover" 
+                                alt="Preview" 
+                              />
+                              {idx === 0 && (
+                                <div className="absolute top-0 right-0 bg-primary text-white text-[9px] px-2 py-1 rounded-bl-xl font-black">{i18n.language === 'ar' ? 'رئيسي' : 'PRINCIPALE'}</div>
+                              )}
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const newImages = [...newProduct.images];
+                                  newImages.splice(idx, 1);
+                                  setNewProduct({ ...newProduct, images: newImages });
+                                }}
+                                className="absolute bottom-2 right-2 bg-red-500/90 text-white w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          ))}
+                          <div 
+                            onClick={() => document.querySelector('input[type="file"]').click()}
+                            className="w-28 h-28 rounded-2xl border-2 border-dashed border-stone-200 flex flex-col items-center justify-center text-stone-400 hover:text-primary hover:border-primary/50 transition-all cursor-pointer bg-stone-50/50"
+                          >
+                            <span className="material-symbols-outlined text-3xl">add_a_photo</span>
+                            <span className="text-[10px] font-bold mt-1 uppercase">{i18n.language === 'ar' ? 'إضافة' : 'Ajouter'}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="md:col-span-2 pt-2">
                       {adminFeedback.message && (
@@ -602,10 +752,10 @@ const Profile = () => {
                         {isAddingProduct ? (
                           <>
                             <span className="animate-spin material-symbols-outlined">autorenew</span>
-                            Ajout en cours...
+                            {i18n.language === 'ar' ? 'جاري الإضافة...' : 'Ajout en cours...'}
                           </>
                         ) : (
-                          <>Ajouter au Catalogue</>
+                          <>{t('add_to_catalog_btn')}</>
                         )}
                       </button>
                     </div>
@@ -614,18 +764,21 @@ const Profile = () => {
 
                 {/* Product Management List */}
                 <div className="space-y-6">
-                  <h4 className="text-xl font-bold flex justify-between items-center">
-                    <span>Produits Actuels ({allProducts.length})</span>
+                  <div className="flex justify-between items-center">
+                    <div className="flex bg-[#e8e8e3] p-1 rounded-lg">
+                      <button onClick={() => setActiveAdminTab('products')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeAdminTab === 'products' ? 'bg-white shadow-sm text-primary' : 'text-stone-500'}`}>{t('all_products_admin')} ({allProducts.length})</button>
+                      <button onClick={() => setActiveAdminTab('rentals')} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeAdminTab === 'rentals' ? 'bg-white shadow-sm text-primary' : 'text-stone-500'}`}>{t('rental_list')} ({allRentals.length})</button>
+                    </div>
                     <button onClick={fetchAllProducts} className="text-primary text-sm flex items-center gap-1 hover:underline">
                       <span className="material-symbols-outlined text-sm">refresh</span>
-                      Actualiser
+                      {t('refresh')}
                     </button>
-                  </h4>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     {isLoadingAdmin ? (
                       <p className="text-center py-12 text-stone-500 font-bold">Chargement du catalogue...</p>
                     ) : (
-                      allProducts.map(product => (
+                      (activeAdminTab === 'products' ? allProducts : allRentals).map(product => (
                         <div key={product.id} className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-[#bfcaba]/30 flex items-center justify-between group hover:shadow-md transition-shadow">
                           <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-lg overflow-hidden bg-stone-100">
@@ -642,7 +795,7 @@ const Profile = () => {
                               <p className="text-xs text-[#40493d]">{product.category} • <span className="font-bold text-primary">{product.price}</span></p>
                             </div>
                           </div>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="w-10 h-10 rounded-full flex items-center justify-center text-red-200 group-hover:text-red-600 hover:bg-red-50 transition-all">
+                          <button onClick={() => handleDeleteProduct(product.id, product.is_rental)} className="w-10 h-10 rounded-full flex items-center justify-center text-red-200 group-hover:text-red-600 hover:bg-red-50 transition-all">
                             <span className="material-symbols-outlined">delete</span>
                           </button>
                         </div>

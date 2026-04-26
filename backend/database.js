@@ -50,23 +50,32 @@ const db = {
       sql = sql.sql;
     }
     
+    // Map arguments to safe types for LibSQL (prevents "unsupported type" panics)
+    const mappedArgs = args.map(arg => {
+      if (typeof arg === 'number') {
+        return Number.isInteger(arg) ? BigInt(arg) : arg;
+      }
+      if (typeof arg === 'boolean') return arg ? 1 : 0;
+      if (arg === null || arg === undefined) return null;
+      return String(arg);
+    });
+
     // In production, use the direct Web API which we proved works
     if (isProd) {
       // Turso's pipeline API expects arguments to be "Value" objects (type + value)
-      // Note: Integers and Floats must be passed as strings to avoid precision issues in JSON
-      const mappedArgs = args.map(arg => {
-        if (typeof arg === 'number') {
-          return { type: Number.isInteger(arg) ? 'integer' : 'float', value: String(arg) };
+      const pipelineArgs = mappedArgs.map(arg => {
+        if (typeof arg === 'bigint' || (typeof arg === 'number' && Number.isInteger(arg))) {
+          return { type: 'integer', value: String(arg) };
         }
-        if (typeof arg === 'boolean') return { type: 'integer', value: arg ? '1' : '0' };
-        if (arg === null || arg === undefined) return { type: 'null' };
+        if (typeof arg === 'number') return { type: 'float', value: String(arg) };
+        if (arg === null) return { type: 'null' };
         return { type: 'text', value: String(arg) };
       });
 
       const response = await fetch(`${finalDbUrl}/v2/pipeline`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql, args: mappedArgs } }] })
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql, args: pipelineArgs } }] })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -90,7 +99,7 @@ const db = {
     }
 
     // In local development, use the library or direct sqlite3 (via client)
-    return client.execute({ sql, args });
+    return client.execute({ sql, args: mappedArgs });
   },
 
   all: function(sql, params, callback) {
@@ -114,7 +123,7 @@ const db = {
     }
     this.execute(sql, params)
       .then(result => {
-        if (callback) callback(null);
+        if (callback) callback.call({ lastID: result.last_insert_rowid || result.lastInsertRowid }, null);
       })
       .catch(err => {
         if (callback) callback(err);
@@ -185,7 +194,8 @@ const initDb = async function initDb() {
             image TEXT,
             availability TEXT,
             availabilityBg TEXT,
-            availabilityText TEXT
+            availabilityText TEXT,
+            is_rental INTEGER DEFAULT 0
         )`);
 
         await db.execute(`CREATE TABLE IF NOT EXISTS users (
@@ -193,7 +203,8 @@ const initDb = async function initDb() {
             name TEXT,
             email TEXT UNIQUE,
             password TEXT,
-            phone TEXT
+            phone TEXT,
+            role TEXT DEFAULT 'user'
         )`);
 
         await db.execute(`CREATE TABLE IF NOT EXISTS addresses (
@@ -213,6 +224,10 @@ const initDb = async function initDb() {
             date TEXT,
             amount TEXT,
             status TEXT,
+            payment_status TEXT DEFAULT 'Unpaid',
+            delivery_status TEXT DEFAULT 'Préparation',
+            payment_method TEXT,
+            estimated_delivery TEXT,
             farm_name TEXT,
             parcel_num TEXT,
             street TEXT,
@@ -220,12 +235,47 @@ const initDb = async function initDb() {
             FOREIGN KEY (user_id) REFERENCES users (id)
         )`);
 
-        // Migration check
+        // Migration check for orders table
         try {
-            const columns = ['farm_name', 'parcel_num', 'street', 'city'];
+            const columns = [
+                { name: 'farm_name', type: 'TEXT' },
+                { name: 'parcel_num', type: 'TEXT' },
+                { name: 'street', type: 'TEXT' },
+                { name: 'city', type: 'TEXT' },
+                { name: 'payment_status', type: 'TEXT DEFAULT "Unpaid"' },
+                { name: 'delivery_status', type: 'TEXT DEFAULT "Préparation"' },
+                { name: 'payment_method', type: 'TEXT' },
+                { name: 'estimated_delivery', type: 'TEXT' },
+                { name: 'assigned_driver', type: 'TEXT' },
+                { name: 'cancellation_reason', type: 'TEXT' }
+            ];
             for (const col of columns) {
-                await db.execute(`ALTER TABLE orders ADD COLUMN ${col} TEXT`).catch(() => {});
+                await db.execute(`ALTER TABLE orders ADD COLUMN ${col.name} ${col.type}`).catch(() => {});
             }
+        } catch (e) {}
+
+        // Migration check for users table (role)
+        try {
+            await db.execute(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`).catch(() => {});
+        } catch (e) {}
+
+        // Migration check for products table (is_rental, description, rental_period, rental_prices, technical_specs, arabic fields)
+        try {
+            await db.execute(`ALTER TABLE products ADD COLUMN is_rental INTEGER DEFAULT 0`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN description TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN rental_period TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN rental_prices TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN images_gallery TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN technical_specs TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN name_ar TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN description_ar TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN technical_specs_ar TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN short_description TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN short_description_ar TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN advantages TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN advantages_ar TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN usage_tips TEXT`).catch(() => {});
+            await db.execute(`ALTER TABLE products ADD COLUMN usage_tips_ar TEXT`).catch(() => {});
         } catch (e) {}
 
         await db.execute(`CREATE TABLE IF NOT EXISTS order_items (
@@ -306,8 +356,53 @@ const initDb = async function initDb() {
             
             for (const p of seedData) {
                 await db.execute({
-                    sql: 'INSERT INTO products (name, category, price, numericPrice, image, availability, availabilityBg, availabilityText) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    sql: 'INSERT INTO products (name, category, price, numericPrice, image, availability, availabilityBg, availabilityText, is_rental) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
                     args: [p.name, p.category, p.price, p.numericPrice, p.image, p.availability, p.availabilityBg, p.availabilityText]
+                });
+            }
+        }
+        
+        // Seed Admin User
+        const adminCheck = await db.execute("SELECT id FROM users WHERE email = 'admin@injaz.ma' LIMIT 1");
+        if (adminCheck.rows.length === 0) {
+            console.log('Seeding admin user...');
+            await db.execute({
+                sql: 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+                args: ['Admin Injaz', 'admin@injaz.ma', 'admin', 'admin']
+            });
+        }
+
+        // Seed Rental Specific Data check
+        const rentalsCheck = await db.execute('SELECT id FROM products WHERE is_rental = 1 LIMIT 1');
+        if (rentalsCheck.rows.length === 0) {
+            console.log('No rentals found. Seeding initial rental machines...');
+            const rentalSeed = [
+                {
+                    name: "John Deere 8R 410", category: "Tracteurs", price: "450 € / jour", numericPrice: 450,
+                    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB5TBaXDo4ZU3CdPl9l6GtZLkNj2p2F5PuLtiK0j7FHaSCMdIMCGV1QN7-WNiKt7PC7HDHNbq4Nj6-CIihtAp_RZVdSVwYk38kCleMmxnHqsPl5JZ1D11yaq9Nzg5Nf9WnzFGV783RzUWnYkTUCEuj4nh8AhLR5GfHUfmFuMfl37NrJc8IXMB5LAmuCQpm-z4RKHF6JfNmA5jhZu7NQCYMGzdjigorRL9xsPfcxVENESRBMyJG6HBNjLdEXj1Jvn3EuauLsUpZ947M",
+                    availability: "DISPONIBLE", availabilityBg: "bg-secondary-fixed-dim", availabilityText: "text-on-secondary-fixed-variant"
+                },
+                {
+                    name: "CAT 320 GC", category: "Excavatrices", price: "320 € / jour", numericPrice: 320,
+                    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB9huxWKMIqhxE7v_MFB-pkrf13zMSfosL-ia1UTpOHSNvraU0k3D-k-N9klo4nE0gej_PsJTJCPsYaqECCEpXaXP92rSpxY10uuDBjSOhMzZxtrpSsHuH6l7Rj_mfo-AFlA8fl3e3gZidUeP668sx10T6vO6iGYURyAf4X62N3jIOXI488igqnbL3xAENqU2_11I79E239BQsG-VybxFn-RukSK6CSVRcvQGkpq_8llVkPalYSZRn6ktkcfV7uX4pi-jP68xEBtr0",
+                    availability: "DISPONIBLE", availabilityBg: "bg-secondary-fixed-dim", availabilityText: "text-on-secondary-fixed-variant"
+                },
+                {
+                    name: "Claas Lexion 8900", category: "Moissonneuses", price: "850 € / jour", numericPrice: 850,
+                    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuClhVwxfRBLTHirS0t-gQ82yHP6QAAg_PQMwqDEiftEsFGr2WqsBGOyLBWl0OfNTQnbYs5n4PSkQ7yGdqKdSAMhFBHJXoUa7Al0AETxH0xtZLSt8ob-PKv-uAlfsNaNtmvy5bgNDD3i_jDS0RMqNXDYcn4EKIsmeMeFBFKu0W_3Lb6sVr6uffcj02va5A9fE-1zcZdTi2xMzsaSmqo92zwd16FwzCWDJy9pkg2xsPyMjZE3zXBxaYNc0QvvAouDI2BQbHOh3Mx_bLM",
+                    availability: "RESERVÉ", availabilityBg: "bg-tertiary-container/20", availabilityText: "text-tertiary"
+                },
+                {
+                    name: "Scania R500 V8", category: "Matériel de Transport", price: "275 € / jour", numericPrice: 275,
+                    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD8pe-uxGBV9PhCyt1INxjAx6JJBTz0HMYRSqX9mOhJXsTec-FGFkW83Y3ldgYjKuDR0aSuyA4Bux30yU21psbur3BdflcJCwy6BhulwEJgqi9UzqbyxCdUW242DqQ-LynBCLQWnwj9cCjPLngJS_B5KUwvKdTPXZZyNrHiBeBWQX3jog6GIZ10tVqiZIQI79VihddUPnCUomMoyxqcpj9HERAXH3CjSG0dN3aD6LQX1g9RLfpR2XPdPhFt7IR_Iua1aVyMBPlzqTI",
+                    availability: "DISPONIBLE", availabilityBg: "bg-secondary-fixed-dim", availabilityText: "text-on-secondary-fixed-variant"
+                }
+            ];
+            
+            for (const r of rentalSeed) {
+                await db.execute({
+                    sql: 'INSERT INTO products (name, category, price, numericPrice, image, availability, availabilityBg, availabilityText, is_rental) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
+                    args: [r.name, r.category, r.price, r.numericPrice, r.image, r.availability, r.availabilityBg, r.availabilityText]
                 });
             }
         }
